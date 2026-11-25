@@ -47,8 +47,7 @@ main{padding:14px 16px 110px;max-width:760px;margin:0 auto}
 .tag.st-Ausstehend{color:var(--warn);border-color:#5b4a2c}
 .tag.st-MPE{color:var(--blue);border-color:#33495f}
 .tag.st-Auftrag{color:var(--ok);border-color:#2f5645}
-.tag.st-Verkauft{color:var(--ok);border-color:#2f5645}
-.tag.st-Erledigt{color:var(--muted)}
+.tag.st-Kein-Auftrag,.tag.st-Erledigt{color:var(--muted)}
 .tag.due{color:var(--bad);border-color:#6a3b36;font-weight:600}
 .card.a-rot{border-left:6px solid var(--red)}
 .card.a-gelb{border-left:6px solid var(--yellow)}
@@ -156,7 +155,7 @@ h1 small::after{content:'';display:block;width:36px;height:2px;background:var(--
     <button class="btn" id="exCsv">Als CSV (Excel)</button>
   </div>
   <input type="file" id="file" accept=".json,application/json" hidden>
-  <p id="ver" style="margin-top:22px">Version 25.11.2026, 22:45</p>
+  <p id="ver" style="margin-top:22px">Version 25.11.2026, 23:15</p>
   <p>Beim Laden einer Sicherung kannst du wählen: mit der bestehenden Liste zusammenführen oder sie ersetzen.</p>
 </div></div>
 <div class="sheet" id="paste"><div class="sheet-in menu">
@@ -182,7 +181,7 @@ h1 small::after{content:'';display:block;width:36px;height:2px;background:var(--
 
 <script>
 const KEY='eigentuemerliste.v1';
-const STATUS=['Ausstehend','Auftrag','Verkauft','Erledigt'];
+const STATUS=['Ausstehend','Auftrag','Kein Auftrag'];
 const MPE=['Zu erledigen','Erledigt','Nicht notwendig'];
 const OBJEKT=['Einfamilienhaus','Doppelhaus','Mehrfamilienhaus','Wohnung','Gewerbe','Sonstiges'];
 const mapsUrl=a=>'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(a);
@@ -194,6 +193,8 @@ function objektArt(t){t=String(t||'');
   if(/Gewerbe/i.test(t))return'Gewerbe';
   return''}
 function migrate(l){
+  if(l.status==='Verkauft')l.status='Auftrag';
+  if(l.status==='Erledigt')l.status='Kein Auftrag';
   if(l.status==='MPE'){l.status='Ausstehend';if(!l.mpe)l.mpe='Zu erledigen'}
   if(l.nachgefasst==='MPE'){l.nachgefasst='Nein';if(!l.mpe)l.mpe='Zu erledigen'}
   if(l.quelle!==undefined){if(!l.tippgeber)l.tippgeber=l.quelle;delete l.quelle}
@@ -210,10 +211,10 @@ const short=iso=>iso?iso.slice(8,10)+'.'+iso.slice(5,7)+'.':'';
 let selId=null;let leads=[]; const ui={q:'',status:'Alle',quelle:'',sort:'faellig'};
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'[]');leads=Array.isArray(d)?d:[]}catch(e){leads=[]}
   try{if(!localStorage.getItem(KEY+'.dh')){leads.forEach(l=>{if(!l.objekt&&/\bDHH\b|Doppelhaus/i.test(l.adresse||''))l.objekt='Doppelhaus'});localStorage.setItem(KEY+'.dh','1');save()}}catch(e){}
-  if(leads.some(l=>l.status==='MPE'||l.nachgefasst==='MPE'||l.mpe===undefined||l.quelle!==undefined||l.adresse===undefined||l.strasse===undefined)){leads.forEach(migrate);save()}}
+  if(leads.some(l=>l.status==='MPE'||l.status==='Verkauft'||l.status==='Erledigt'||l.nachgefasst==='MPE'||l.mpe===undefined||l.quelle!==undefined||l.adresse===undefined||l.strasse===undefined)){leads.forEach(migrate);save()}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(leads))}catch(e){toast('Speichern nicht möglich')}}
 function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2600)}
-const open=l=>!['Verkauft','Erledigt'].includes(l.status);
+const open=l=>!['Auftrag','Kein Auftrag'].includes(l.status);
 const AMP={rot:{n:'Rot',t:'dringend',e:'🔴'},gelb:{n:'Gelb',t:'on hold, wöchentlich',e:'🟡'},gruen:{n:'Grün',t:'erledigt / Auftrag',e:'🟢'}};
 const dotsHtml=l=>`<span class="dots">${['rot','gelb','gruen'].map(a=>`<button type="button" class="dot ${a} ${l.ampel===a?'on':''}" data-amp="${a}" aria-label="${AMP[a].n}: ${AMP[a].t}"></button>`).join('')}</span>`;
 const addDays=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
@@ -281,7 +282,7 @@ function cardHtml(l){
         ${l.name&&addr(l)?`<div class="obj">${esc(addr(l))}</div>`:''}</div>
         ${h?`<a class="call" href="${h}" aria-label="Anrufen" data-call>☎</a>`:''}</div>
       ${l.info?`<div class="info">${esc(l.info)}</div>`:''}
-      <div class="meta">${l.ampel?`<span class="tag am-${l.ampel}">${AMP[l.ampel].e} ${AMP[l.ampel].t}</span>`:''}<span class="tag st-${esc(l.status)}">${esc(l.status)}</span>${l.objekt?`<span class="tag">${esc(l.objekt)}</span>`:''}${l.mpe?`<span class="tag st-${l.mpe==='Erledigt'?'Auftrag':l.mpe==='Zu erledigen'?'MPE':'Erledigt'}">MPE: ${esc(l.mpe)}</span>`:''}
+      <div class="meta">${l.ampel?`<span class="tag am-${l.ampel}">${AMP[l.ampel].e} ${AMP[l.ampel].t}</span>`:''}<span class="tag st-${esc(l.status).replace(/ /g,'-')}">${esc(l.status)}</span>${l.objekt?`<span class="tag">${esc(l.objekt)}</span>`:''}${l.mpe?`<span class="tag st-${l.mpe==='Erledigt'?'Auftrag':l.mpe==='Zu erledigen'?'MPE':'Erledigt'}">MPE: ${esc(l.mpe)}</span>`:''}
         ${l.tippgeber?`<span class="tag">${esc(l.tippgeber)}</span>`:''}
         ${l.faellig&&isDue(l)?`<span class="tag due">fällig ${short(l.faellig)}</span>`:l.faellig&&open(l)?`<span class="tag">Nachfassen ${short(l.faellig)}</span>`:''}
         ${l.letzter?`<span class="tag">Kontakt ${short(l.letzter)}</span>`:''}${dotsHtml(l)}</div></div>`;

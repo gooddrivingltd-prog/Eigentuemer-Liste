@@ -170,7 +170,7 @@ function filtered(){
 function render(){
   const dueN=leads.filter(isDue).length;
   const cnt=s=>leads.filter(l=>l.status===s).length;
-  const defs=[['Alle','Alle',leads.length],['Fällig','Fällig',dueN],
+  const defs=[['Alle','Alle',leads.length],
     ...['rot','gelb','gruen'].map(a=>['amp:'+a,AMP[a].e+' '+AMP[a].n,leads.filter(l=>l.ampel===a).length]),
     ...STATUS.map(s=>[s,s,cnt(s)])];
   $('#chips').innerHTML=defs.map(([k,label,c])=>{

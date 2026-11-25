@@ -100,6 +100,11 @@ textarea.f{min-height:120px;resize:vertical}
 .menu p{color:var(--muted);font-size:14px;margin:4px 0 14px}
 h2{font:400 22px var(--serif);margin:6px 0 0}
 .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--line);padding:10px 16px;border-radius:12px;z-index:50;display:none;max-width:90%}
+.sum{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:6px 0 12px}
+.sum-row{display:flex;flex-wrap:wrap;gap:6px}
+.sum-due{margin-top:10px;font-weight:600}.sum-due.late{color:var(--bad,#e5766b)}
+.sum-adr{margin-top:6px;color:var(--muted)}
+.sum-note{margin-top:6px;font-size:14px;color:var(--muted);font-style:italic}
 .modal{position:fixed;inset:0;background:#000b;z-index:60;display:grid;place-items:center;padding:20px}
 .modal[hidden]{display:none}
 .modal-in{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px;max-width:420px;width:100%}
@@ -155,7 +160,7 @@ h1 small::after{content:'';display:block;width:36px;height:2px;background:var(--
     <button class="btn" id="exCsv">Als CSV (Excel)</button>
   </div>
   <input type="file" id="file" accept=".json,application/json" hidden>
-  <p id="ver" style="margin-top:22px">Version 25.11.2026, 23:55</p>
+  <p id="ver" style="margin-top:22px">Version 26.11.2026, 00:10</p>
   <p>Beim Laden einer Sicherung kannst du wählen: mit der bestehenden Liste zusammenführen oder sie ersetzen.</p>
 </div></div>
 <div class="sheet" id="paste"><div class="sheet-in menu">
@@ -309,6 +314,12 @@ function openDetail(id,preset){
   $('#detailIn').innerHTML=`
   <div class="sheet-top"><button class="link" id="dBack">‹ Zurück</button>${isNew?'':'<button class="link danger" id="dDel">Löschen</button>'}</div>
   <h2>${isNew?'Neuer Eintrag':esc(title(cur))}</h2>
+  ${isNew?'':`<div class="sum">
+    <div class="sum-row">${cur.ampel?`<span class="tag am-${cur.ampel}">${AMP[cur.ampel].e} ${AMP[cur.ampel].t}</span>`:''}<span class="tag st-${esc(cur.status).replace(/ /g,'-')}">${esc(cur.status)}</span>${cur.objekt?`<span class="tag">${esc(cur.objekt)}</span>`:''}${cur.mpe?`<span class="tag">MPE: ${esc(cur.mpe)}</span>`:''}</div>
+    ${cur.faellig?`<div class="sum-due ${isDue(cur)?'late':''}">${isDue(cur)?'Fällig seit':'Nachfassen am'} ${fmt(cur.faellig)}</div>`:''}
+    ${addr(cur)?`<div class="sum-adr">${esc(addr(cur))}</div>`:''}
+    ${cur.info?`<div class="sum-note">${esc(cur.info.split('\n')[0].slice(0,140))}</div>`:''}
+  </div>`}
   ${h?`<div class="actions"><a class="btn primary" href="${h}">☎ Anrufen</a></div>`:''}
   <label>Ampel</label>
   <div class="amps" id="amps">${['rot','gelb','gruen'].map(a=>`<button type="button" class="amp-b ${a} ${cur.ampel===a?'on':''}" data-a="${a}"><i></i>${AMP[a].n}<small>${AMP[a].t}</small></button>`).join('')}</div>

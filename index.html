@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#17191e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Eigentümerliste</title>
+<style>
+:root{
+  --bg:#17191e; --surface:#21252d; --surface2:#2a2f39; --line:#343a46;
+  --text:#ece8e1; --muted:#aaa59a; --accent:#e2a65b; --accent-ink:#1b1608;
+  --ok:#7fc8a0; --warn:#f0b36a; --bad:#e58a80; --blue:#8db8e8;
+  --serif:Georgia,'Times New Roman',serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:max(14px,env(safe-area-inset-top)) 16px 10px;border-bottom:1px solid var(--line)}
+.top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+h1{font:400 26px/1.1 var(--serif);margin:0;letter-spacing:.2px}
+h1 small{display:block;font:500 13px system-ui,sans-serif;color:var(--muted);margin-top:4px;letter-spacing:0}
+.icon-btn{background:none;border:1px solid var(--line);border-radius:10px;width:42px;height:42px;font-size:20px;cursor:pointer}
+.search{margin:12px 0 10px;display:flex;gap:8px}
+.search input{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 14px;min-width:0}
+.search input::placeholder{color:var(--muted)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:none;border-radius:999px;padding:7px 14px;font-size:14px;color:var(--muted);cursor:pointer;white-space:nowrap}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.chip b{font-weight:600;margin-left:4px}
+.bar{display:flex;gap:8px;margin-top:10px}
+.bar select{flex:1;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:14px}
+main{padding:14px 16px 110px;max-width:760px;margin:0 auto}
+.count{color:var(--muted);font-size:13px;margin:0 2px 10px}
+.card{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 14px 12px;margin-bottom:10px;cursor:pointer}
+.card:active{background:var(--surface2)}
+.row{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.name{font:400 19px/1.25 var(--serif);margin:0;word-break:break-word}
+.obj{color:var(--muted);font-size:14px;margin-top:2px;word-break:break-word}
+.info{margin-top:8px;font-size:14.5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:#d8d3c9}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center}
+.tag{font-size:12.5px;border-radius:999px;padding:3px 10px;border:1px solid var(--line);color:var(--muted)}
+.tag.st-Ausstehend{color:var(--warn);border-color:#5b4a2c}
+.tag.st-MPE{color:var(--blue);border-color:#33495f}
+.tag.st-Auftrag{color:var(--ok);border-color:#2f5645}
+.tag.st-Verkauft{color:var(--ok);border-color:#2f5645}
+.tag.st-Erledigt{color:var(--muted)}
+.tag.due{color:var(--bad);border-color:#6a3b36;font-weight:600}
+.call{flex:none;width:44px;height:44px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;text-decoration:none;font-size:20px}
+.empty{text-align:center;color:var(--muted);padding:50px 20px}
+.empty b{display:block;font:400 20px var(--serif);color:var(--text);margin-bottom:6px}
+.fab{position:fixed;right:max(18px,env(safe-area-inset-right));bottom:max(20px,env(safe-area-inset-bottom));width:60px;height:60px;border-radius:50%;border:none;background:var(--accent);color:var(--accent-ink);font-size:32px;line-height:1;box-shadow:0 6px 20px #0008;cursor:pointer}
+/* Detail */
+.sheet{position:fixed;inset:0;background:var(--bg);z-index:20;overflow-y:auto;display:none}
+.sheet.open{display:block}
+.sheet-in{max-width:760px;margin:0 auto;padding:max(14px,env(safe-area-inset-top)) 16px 120px}
+.sheet-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.link{background:none;border:none;color:var(--accent);font-size:16px;padding:10px 4px;cursor:pointer}
+.link.danger{color:var(--bad)}
+label{display:block;font-size:13px;color:var(--muted);margin:14px 0 5px;letter-spacing:.2px}
+.f{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 13px}
+textarea.f{min-height:120px;resize:vertical}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.toggle{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 13px;cursor:pointer}
+.toggle input{width:20px;height:20px;accent-color:var(--accent)}
+.actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:11px 16px;cursor:pointer;text-decoration:none;display:inline-block}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.quick{display:flex;gap:8px}
+.quick input{flex:1;min-width:0}
+.savebar{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(transparent,var(--bg) 35%);padding:26px 16px max(16px,env(safe-area-inset-bottom))}
+.savebar .btn{width:100%;max-width:728px;display:block;margin:0 auto;text-align:center;font-size:17px;padding:14px}
+.menu p{color:var(--muted);font-size:14px;margin:4px 0 14px}
+h2{font:400 22px var(--serif);margin:6px 0 0}
+.toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--line);padding:10px 16px;border-radius:12px;z-index:50;display:none;max-width:90%}
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <h1>Eigentümerliste<small id="sub"></small></h1>
+    <button class="icon-btn" id="menuBtn" aria-label="Menü">☰</button>
+  </div>
+  <div class="search"><input id="q" type="search" placeholder="Name, Adresse, Telefon, Notiz …" autocomplete="off"></div>
+  <div class="chips" id="chips"></div>
+  <div class="bar">
+    <select id="quelle" aria-label="Quelle"></select>
+    <select id="sort" aria-label="Sortierung">
+      <option value="faellig">Fällig zuerst</option>
+      <option value="name">Name A–Z</option>
+      <option value="updated">Zuletzt bearbeitet</option>
+    </select>
+  </div>
+</header>
+<main><div class="count" id="count"></div><div id="list"></div></main>
+<button class="fab" id="add" aria-label="Neuer Eintrag">+</button>
+
+<div class="sheet" id="detail"><div class="sheet-in" id="detailIn"></div></div>
+<div class="sheet" id="menu"><div class="sheet-in menu">
+  <div class="sheet-top"><button class="link" id="menuClose">‹ Zurück</button></div>
+  <h2>Daten</h2>
+  <p>Alles liegt nur auf diesem Gerät. Mach regelmäßig eine Sicherung.</p>
+  <div class="actions" style="margin-top:0">
+    <button class="btn primary" id="exJson">Sicherung speichern</button>
+    <button class="btn" id="imJson">Sicherung laden</button>
+    <button class="btn" id="exCsv">Als CSV (Excel)</button>
+  </div>
+  <input type="file" id="file" accept=".json,application/json" hidden>
+  <p style="margin-top:22px">Beim Laden einer Sicherung kannst du wählen: mit der bestehenden Liste zusammenführen oder sie ersetzen.</p>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<datalist id="dlQuelle"></datalist>
+<datalist id="dlTipp"></datalist>
+
+<script>
+const KEY='eigentuemerliste.v1';
+const STATUS=['Ausstehend','MPE','Auftrag','Verkauft','Erledigt'];
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>crypto.randomUUID?crypto.randomUUID():'id'+Date.now()+Math.random().toString(16).slice(2);
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const fmt=iso=>iso?iso.split('-').reverse().join('.'):'';
+const short=iso=>iso?iso.slice(8,10)+'.'+iso.slice(5,7)+'.':'';
+
+let leads=[]; const ui={q:'',status:'Alle',quelle:'',sort:'faellig'};
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'[]');leads=Array.isArray(d)?d:[]}catch(e){leads=[]}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(leads))}catch(e){toast('Speichern nicht möglich')}}
+function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2600)}
+const open=l=>!['Verkauft','Erledigt'].includes(l.status);
+const isDue=l=>l.faellig&&l.faellig<=today()&&open(l);
+const title=l=>l.name||l.objekt||'(ohne Name)';
+const telHref=t=>{const d=String(t||'').replace(/[^\d+]/g,'');return d.replace(/\D/g,'').length>=6?'tel:'+d:''};
+
+function filtered(){
+  const q=ui.q.trim().toLowerCase();
+  let r=leads.filter(l=>{
+    if(ui.status==='Fällig'){if(!isDue(l))return false}
+    else if(ui.status!=='Alle'&&l.status!==ui.status)return false;
+    if(ui.quelle&&l.quelle!==ui.quelle)return false;
+    if(q){const h=[l.nr,l.name,l.tel,l.objekt,l.quelle,l.tippgeber,l.info].join(' ').toLowerCase();if(!q.split(/\s+/).every(w=>h.includes(w)))return false}
+    return true});
+  const by={
+    faellig:(a,b)=>(a.faellig||'9999').localeCompare(b.faellig||'9999')||title(a).localeCompare(title(b),'de'),
+    name:(a,b)=>title(a).localeCompare(title(b),'de'),
+    updated:(a,b)=>(b.updated||0)-(a.updated||0)};
+  return r.sort(by[ui.sort]);
+}
+function render(){
+  const dueN=leads.filter(isDue).length;
+  const cnt=s=>leads.filter(l=>l.status===s).length;
+  const names=['Alle','Fällig',...STATUS];
+  $('#chips').innerHTML=names.map(n=>{
+    const c=n==='Alle'?leads.length:n==='Fällig'?dueN:cnt(n);
+    if(!c&&n!==ui.status&&n!=='Alle'&&n!=='Fällig')return '';
+    return `<button class="chip ${ui.status===n?'on':''}" data-s="${n}">${n}<b>${c}</b></button>`}).join('');
+  const qs=[...new Set(leads.map(l=>l.quelle).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'de'));
+  $('#quelle').innerHTML='<option value="">Alle Quellen</option>'+qs.map(q=>`<option ${q===ui.quelle?'selected':''}>${esc(q)}</option>`).join('');
+  $('#dlQuelle').innerHTML=qs.map(q=>`<option value="${esc(q)}">`).join('');
+  $('#dlTipp').innerHTML=[...new Set(leads.map(l=>l.tippgeber).filter(Boolean))].map(q=>`<option value="${esc(q)}">`).join('');
+  $('#sub').textContent=leads.length?`${leads.length} Einträge${dueN?` · ${dueN} fällig`:''}`:'noch leer';
+  const r=filtered();
+  $('#count').textContent=leads.length?`${r.length} angezeigt`:'';
+  if(!leads.length){$('#list').innerHTML='<div class="empty"><b>Noch keine Einträge</b>Mit + einen anlegen oder im Menü (☰) eine Sicherung laden.</div>';return}
+  if(!r.length){$('#list').innerHTML='<div class="empty"><b>Nichts gefunden</b>Suche oder Filter anpassen.</div>';return}
+  $('#list').innerHTML=r.map(l=>{
+    const h=telHref(l.tel);
+    return `<div class="card" data-id="${l.id}" role="button" tabindex="0">
+      <div class="row"><div style="min-width:0"><h3 class="name">${esc(title(l))}</h3>
+        ${l.name&&l.objekt?`<div class="obj">${esc(l.objekt)}</div>`:''}</div>
+        ${h?`<a class="call" href="${h}" aria-label="Anrufen" data-call>☎</a>`:''}</div>
+      ${l.info?`<div class="info">${esc(l.info)}</div>`:''}
+      <div class="meta"><span class="tag st-${esc(l.status)}">${esc(l.status)}</span>
+        ${l.quelle?`<span class="tag">${esc(l.quelle)}</span>`:''}
+        ${isDue(l)?`<span class="tag due">fällig ${short(l.faellig)}</span>`:l.faellig&&open(l)?`<span class="tag">Nachfassen ${short(l.faellig)}</span>`:''}
+        ${l.letzter?`<span class="tag">Kontakt ${short(l.letzter)}</span>`:''}</div></div>`}).join('');
+}
+
+/* Detail */
+let cur=null;
+function openDetail(id){
+  const isNew=!id;
+  cur=isNew?{id:uid(),nr:'',name:'',tel:'',objekt:'',quelle:'',ewe:false,fio:false,tippgeber:'',datum:today(),status:'Ausstehend',nachgefasst:'Nein',info:'',letzter:'',faellig:'',updated:0}
+           :{...leads.find(l=>l.id===id)};
+  const v=k=>esc(cur[k]);
+  const h=telHref(cur.tel);
+  $('#detailIn').innerHTML=`
+  <div class="sheet-top"><button class="link" id="dBack">‹ Zurück</button>${isNew?'':'<button class="link danger" id="dDel">Löschen</button>'}</div>
+  <h2>${isNew?'Neuer Eintrag':esc(title(cur))}</h2>
+  ${h?`<div class="actions"><a class="btn primary" href="${h}">☎ Anrufen</a></div>`:''}
+  <label>Notiz mit Datum anhängen (setzt „Letzter Kontakt“ auf heute)</label>
+  <div class="quick"><input class="f" id="quick" placeholder="z. B. nicht erreicht, Mailbox"><button class="btn" id="quickBtn">Hinzufügen</button></div>
+  <label>Aktuelle Info</label><textarea class="f" id="f_info">${v('info')}</textarea>
+  <div class="two"><div><label>Status</label><select class="f" id="f_status">${STATUS.map(s=>`<option ${s===cur.status?'selected':''}>${s}</option>`).join('')}</select></div>
+  <div><label>Nachfassen am</label><input class="f" type="date" id="f_faellig" value="${v('faellig')}"></div></div>
+  <label>Name</label><input class="f" id="f_name" value="${v('name')}">
+  <label>Telefon</label><input class="f" id="f_tel" inputmode="tel" value="${v('tel')}">
+  <label>Adresse / Objekt</label><input class="f" id="f_objekt" value="${v('objekt')}">
+  <div class="two"><div><label>Quelle</label><input class="f" id="f_quelle" list="dlQuelle" value="${v('quelle')}"></div>
+  <div><label>Tippgeber</label><input class="f" id="f_tipp" list="dlTipp" value="${v('tippgeber')}"></div></div>
+  <div class="two"><div><label>Nr.</label><input class="f" id="f_nr" value="${v('nr')}"></div>
+  <div><label>Nachgefasst</label><select class="f" id="f_nach">${['Nein','Ja','MPE'].map(s=>`<option ${s===cur.nachgefasst?'selected':''}>${s}</option>`).join('')}</select></div></div>
+  <div class="two"><div><label>Datum (Eingang)</label><input class="f" type="date" id="f_datum" value="${v('datum')}"></div>
+  <div><label>Letzter Kontakt</label><input class="f" type="date" id="f_letzter" value="${v('letzter')}"></div></div>
+  <div class="two" style="margin-top:14px"><label class="toggle" style="margin:0"><input type="checkbox" id="f_ewe" ${cur.ewe?'checked':''}>EWE</label>
+  <label class="toggle" style="margin:0"><input type="checkbox" id="f_fio" ${cur.fio?'checked':''}>In FIO erfasst</label></div>
+  <div class="savebar"><button class="btn primary" id="dSave">Speichern</button></div>`;
+  $('#detail').classList.add('open');$('#detail').scrollTop=0;
+  $('#dBack').onclick=closeDetail;
+  $('#dSave').onclick=()=>{collect();commit();closeDetail();toast('Gespeichert')};
+  if(!isNew)$('#dDel').onclick=()=>{if(confirm('„'+title(cur)+'“ wirklich löschen?')){leads=leads.filter(l=>l.id!==cur.id);save();closeDetail();render();toast('Gelöscht')}};
+  $('#quickBtn').onclick=()=>{
+    const t=$('#quick').value.trim();if(!t)return;
+    const ta=$('#f_info');ta.value=`${short(today())} ${t}`+(ta.value?'\n'+ta.value:'');
+    $('#f_letzter').value=today();$('#quick').value='';
+  };
+}
+function collect(){
+  const g=i=>$(i).value.trim();
+  Object.assign(cur,{info:$('#f_info').value.trim(),status:g('#f_status'),faellig:g('#f_faellig'),name:g('#f_name'),tel:g('#f_tel'),objekt:g('#f_objekt'),
+    quelle:g('#f_quelle'),tippgeber:g('#f_tipp'),nr:g('#f_nr'),nachgefasst:g('#f_nach'),datum:g('#f_datum'),letzter:g('#f_letzter'),
+    ewe:$('#f_ewe').checked,fio:$('#f_fio').checked});
+}
+function commit(){
+  cur.updated=Date.now();
+  const i=leads.findIndex(l=>l.id===cur.id);
+  if(i<0)leads.unshift(cur);else leads[i]=cur;
+  save();render();
+}
+function closeDetail(){$('#detail').classList.remove('open');cur=null}
+
+/* Events */
+$('#list').addEventListener('click',e=>{
+  if(e.target.closest('[data-call]'))return;
+  const c=e.target.closest('.card');if(c)openDetail(c.dataset.id)});
+$('#list').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.classList.contains('card'))openDetail(e.target.dataset.id)});
+$('#chips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(b){ui.status=b.dataset.s;render()}});
+$('#q').addEventListener('input',e=>{ui.q=e.target.value;render()});
+$('#quelle').addEventListener('change',e=>{ui.quelle=e.target.value;render()});
+$('#sort').addEventListener('change',e=>{ui.sort=e.target.value;render()});
+$('#add').onclick=()=>openDetail(null);
+$('#menuBtn').onclick=()=>$('#menu').classList.add('open');
+$('#menuClose').onclick=()=>$('#menu').classList.remove('open');
+history.scrollRestoration='manual';
+
+/* Sicherung */
+function download(name,text,type){
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),3000)}
+$('#exJson').onclick=()=>{download(`eigentuemerliste-${today()}.json`,JSON.stringify({app:'eigentuemerliste',version:1,leads},null,1),'application/json');toast('Sicherung gespeichert')};
+$('#exCsv').onclick=()=>{
+  const cols=[['nr','Nr.'],['name','Name'],['tel','Telefon'],['objekt','Adresse / Objekt'],['quelle','Quelle'],['ewe','EWE'],['fio','FIO erfasst'],['tippgeber','Tippgeber'],['datum','Datum'],['status','Status'],['nachgefasst','Nachgefasst'],['info','Aktuelle Info'],['letzter','Letzter Kontakt'],['faellig','Nachfassen am']];
+  const cell=v=>'"'+String(typeof v==='boolean'?(v?'Ja':'Nein'):v??'').replace(/"/g,'""')+'"';
+  const csv='﻿'+[cols.map(c=>cell(c[1])).join(';'),...leads.map(l=>cols.map(c=>cell(l[c[0]])).join(';'))].join('\r\n');
+  download(`eigentuemerliste-${today()}.csv`,csv,'text/csv');toast('CSV gespeichert')};
+$('#imJson').onclick=()=>$('#file').click();
+$('#file').addEventListener('change',async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{
+    const d=JSON.parse(await f.text());const arr=Array.isArray(d)?d:d.leads;
+    if(!Array.isArray(arr))throw 0;
+    const inc=arr.filter(x=>x&&typeof x==='object').map(x=>({id:x.id||uid(),nr:'',name:'',tel:'',objekt:'',quelle:'',ewe:false,fio:false,tippgeber:'',datum:'',status:'Ausstehend',nachgefasst:'Nein',info:'',letzter:'',faellig:'',updated:0,...x}));
+    let replace=true;
+    if(leads.length){replace=confirm(`${inc.length} Einträge in der Datei.\n\nOK = bestehende Liste (${leads.length}) ERSETZEN\nAbbrechen = zusammenführen`)}
+    if(replace){leads=inc}else{
+      const m=new Map(leads.map(l=>[l.id,l]));inc.forEach(l=>{const o=m.get(l.id);if(!o||(l.updated||0)>=(o.updated||0))m.set(l.id,l)});leads=[...m.values()]}
+    save();render();$('#menu').classList.remove('open');toast(`${leads.length} Einträge`);
+  }catch(err){toast('Datei nicht lesbar')}
+});
+
+load();render();
+if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>

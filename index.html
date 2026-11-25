@@ -143,10 +143,18 @@ h2{font:400 22px var(--serif);margin:6px 0 0}
 const KEY='eigentuemerliste.v1';
 const STATUS=['Ausstehend','Auftrag','Verkauft','Erledigt'];
 const MPE=['Zu erledigen','Erledigt','Nicht notwendig'];
+const OBJEKT=['Einfamilienhaus','Mehrfamilienhaus','Wohnung','Gewerbe','Sonstiges'];
+function objektArt(t){t=String(t||'');
+  if(/\bMFH\b|Mehrfamilienhaus/i.test(t))return'Mehrfamilienhaus';
+  if(/\bEFH\b|Einfamilienhaus/i.test(t))return'Einfamilienhaus';
+  if(/\bWNG\b|\bETW\b|Wohnung|Eigentumswohnung/i.test(t))return'Wohnung';
+  if(/Gewerbe/i.test(t))return'Gewerbe';
+  return''}
 function migrate(l){
   if(l.status==='MPE'){l.status='Ausstehend';if(!l.mpe)l.mpe='Zu erledigen'}
   if(l.nachgefasst==='MPE'){l.nachgefasst='Nein';if(!l.mpe)l.mpe='Zu erledigen'}
   if(l.quelle!==undefined){if(!l.tippgeber)l.tippgeber=l.quelle;delete l.quelle}
+  if(l.adresse===undefined){l.adresse=l.objekt||'';l.objekt=objektArt(l.objekt)}
   if(l.mpe===undefined)l.mpe='';return l}
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -157,7 +165,7 @@ const short=iso=>iso?iso.slice(8,10)+'.'+iso.slice(5,7)+'.':'';
 
 let leads=[]; const ui={q:'',status:'Alle',quelle:'',sort:'faellig'};
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'[]');leads=Array.isArray(d)?d:[]}catch(e){leads=[]}
-  if(leads.some(l=>l.status==='MPE'||l.nachgefasst==='MPE'||l.mpe===undefined||l.quelle!==undefined)){leads.forEach(migrate);save()}}
+  if(leads.some(l=>l.status==='MPE'||l.nachgefasst==='MPE'||l.mpe===undefined||l.quelle!==undefined||l.adresse===undefined)){leads.forEach(migrate);save()}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(leads))}catch(e){toast('Speichern nicht möglich')}}
 function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2600)}
 const open=l=>!['Verkauft','Erledigt'].includes(l.status);
@@ -166,7 +174,7 @@ const dotsHtml=l=>`<span class="dots">${['rot','gelb','gruen'].map(a=>`<button t
 const addDays=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nextMonday=()=>addDays((8-new Date().getDay())%7||7);
 const isDue=l=>l.ampel!=='gruen'&&open(l)&&(l.ampel==='rot'||(l.faellig&&l.faellig<=today()));
-const title=l=>l.name||l.objekt||'(ohne Name)';
+const title=l=>l.name||l.adresse||'(ohne Name)';
 const telHref=t=>{const d=String(t||'').replace(/[^\d+]/g,'');return d.replace(/\D/g,'').length>=6?'tel:'+d:''};
 
 function filtered(){
@@ -176,7 +184,7 @@ function filtered(){
     else if(ui.status.startsWith('amp:')){if(l.ampel!==ui.status.slice(4))return false}
     else if(ui.status!=='Alle'&&l.status!==ui.status)return false;
     if(ui.quelle&&l.tippgeber!==ui.quelle)return false;
-    if(q){const h=[l.nr,l.name,l.tel,l.objekt,l.tippgeber,l.info].join(' ').toLowerCase();if(!q.split(/\s+/).every(w=>h.includes(w)))return false}
+    if(q){const h=[l.nr,l.name,l.tel,l.adresse,l.objekt,l.tippgeber,l.info].join(' ').toLowerCase();if(!q.split(/\s+/).every(w=>h.includes(w)))return false}
     return true});
   const by={
     faellig:(a,b)=>(a.ampel==='rot'?0:1)-(b.ampel==='rot'?0:1)||(a.faellig||'9999').localeCompare(b.faellig||'9999')||title(a).localeCompare(title(b),'de'),
@@ -211,10 +219,10 @@ function cardHtml(l){
     const h=telHref(l.tel);
     return `<div class="card a-${l.ampel||'none'}" data-id="${l.id}" role="button" tabindex="0">
       <div class="row"><div style="min-width:0"><h3 class="name">${esc(title(l))}</h3>
-        ${l.name&&l.objekt?`<div class="obj">${esc(l.objekt)}</div>`:''}</div>
+        ${l.name&&l.adresse?`<div class="obj">${esc(l.adresse)}</div>`:''}</div>
         ${h?`<a class="call" href="${h}" aria-label="Anrufen" data-call>☎</a>`:''}</div>
       ${l.info?`<div class="info">${esc(l.info)}</div>`:''}
-      <div class="meta">${l.ampel?`<span class="tag am-${l.ampel}">${AMP[l.ampel].e} ${AMP[l.ampel].t}</span>`:''}<span class="tag st-${esc(l.status)}">${esc(l.status)}</span>${l.mpe?`<span class="tag st-${l.mpe==='Erledigt'?'Auftrag':l.mpe==='Zu erledigen'?'MPE':'Erledigt'}">MPE: ${esc(l.mpe)}</span>`:''}
+      <div class="meta">${l.ampel?`<span class="tag am-${l.ampel}">${AMP[l.ampel].e} ${AMP[l.ampel].t}</span>`:''}<span class="tag st-${esc(l.status)}">${esc(l.status)}</span>${l.objekt?`<span class="tag">${esc(l.objekt)}</span>`:''}${l.mpe?`<span class="tag st-${l.mpe==='Erledigt'?'Auftrag':l.mpe==='Zu erledigen'?'MPE':'Erledigt'}">MPE: ${esc(l.mpe)}</span>`:''}
         ${l.tippgeber?`<span class="tag">${esc(l.tippgeber)}</span>`:''}
         ${l.faellig&&isDue(l)?`<span class="tag due">fällig ${short(l.faellig)}</span>`:l.faellig&&open(l)?`<span class="tag">Nachfassen ${short(l.faellig)}</span>`:''}
         ${l.letzter?`<span class="tag">Kontakt ${short(l.letzter)}</span>`:''}${dotsHtml(l)}</div></div>`;
@@ -232,7 +240,7 @@ function quickAmpel(id,a){
 let cur=null;
 function openDetail(id){
   const isNew=!id;
-  cur=isNew?{id:uid(),nr:'',name:'',tel:'',objekt:'',ewe:false,fio:false,tippgeber:'',datum:today(),status:'Ausstehend',nachgefasst:'Nein',info:'',letzter:'',faellig:'',ampel:'',mpe:'',updated:0}
+  cur=isNew?{id:uid(),nr:'',name:'',tel:'',objekt:'',adresse:'',ewe:false,fio:false,tippgeber:'',datum:today(),status:'Ausstehend',nachgefasst:'Nein',info:'',letzter:'',faellig:'',ampel:'',mpe:'',updated:0}
            :{ampel:'',mpe:'',...leads.find(l=>l.id===id)};
   const v=k=>esc(cur[k]);
   const h=telHref(cur.tel);
@@ -246,7 +254,8 @@ function openDetail(id){
   <h3 class="sec">Kontakt</h3>
   <label>Name</label><input class="f" id="f_name" value="${v('name')}">
   <label>Telefon</label><input class="f" id="f_tel" inputmode="tel" value="${v('tel')}">
-  <label>Adresse / Objekt</label><input class="f" id="f_objekt" value="${v('objekt')}">
+  <label>Adresse</label><input class="f" id="f_adresse" autocomplete="street-address" value="${v('adresse')}">
+  <label>Objekt</label><select class="f" id="f_objekt"><option value="">–</option>${OBJEKT.map(o=>`<option ${o===cur.objekt?'selected':''}>${o}</option>`).join('')}</select>
   <h3 class="sec">Nachfassen</h3>
   <label>Notiz</label><textarea class="f" id="f_info">${v('info')}</textarea>
   <div class="two"><div><label>Status</label><select class="f" id="f_status">${STATUS.map(s=>`<option ${s===cur.status?'selected':''}>${s}</option>`).join('')}</select></div>
@@ -270,13 +279,13 @@ function openDetail(id){
   $('#calBtn').onclick=()=>{
     const d=$('#f_faellig').value;
     if(!d){toast('Erst „Nachfassen am“ eintragen');return}
-    const name=$('#f_name').value.trim()||$('#f_objekt').value.trim()||'Kontakt';
+    const name=$('#f_name').value.trim()||$('#f_adresse').value.trim()||'Kontakt';
     const x=s=>String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n');
     const val=i=>$(i).value.trim();
     const amp=cur.ampel?AMP[cur.ampel].n+' ('+AMP[cur.ampel].t+')':'';
     const block=(h,rows)=>{const r=rows.filter(Boolean);return r.length?[h,...r].join('\n'):''};
     const desc=[
-      block('KONTAKT',[val('#f_name')&&'Name: '+val('#f_name'),val('#f_tel')&&'Telefon: '+val('#f_tel'),val('#f_objekt')&&'Adresse / Objekt: '+val('#f_objekt'),val('#f_tipp')&&'Tippgeber: '+val('#f_tipp')]),
+      block('KONTAKT',[val('#f_name')&&'Name: '+val('#f_name'),val('#f_tel')&&'Telefon: '+val('#f_tel'),val('#f_adresse')&&'Adresse: '+val('#f_adresse'),val('#f_objekt')&&'Objekt: '+val('#f_objekt'),val('#f_tipp')&&'Tippgeber: '+val('#f_tipp')]),
       block('STAND',['Status: '+val('#f_status')+(amp?'   Ampel: '+amp:''),val('#f_mpe')&&'MPE: '+val('#f_mpe'),val('#f_letzter')&&'Letzter Kontakt: '+fmt(val('#f_letzter'))]),
       block('NOTIZ',[val('#f_info')])
     ].filter(Boolean).join('\n\n');
@@ -284,7 +293,7 @@ function openDetail(id){
     const fold=l=>{let o='';while(l.length>60){o+=l.slice(0,60)+'\r\n ';l=l.slice(60)}return o+l};
     const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Eigentuemerliste//DE','CALSCALE:GREGORIAN','BEGIN:VEVENT',
       'UID:'+cur.id+'-'+ds+'@eigentuemerliste','DTSTAMP:'+new Date().toISOString().replace(/[-:]|\.\d{3}/g,''),
-      'DTSTART:'+ds+'T080000','DTEND:'+ds+'T081500','SUMMARY:'+x('Nachfassen: '+name),...(val('#f_objekt')?['LOCATION:'+x(val('#f_objekt'))]:[]),'DESCRIPTION:'+x(desc),
+      'DTSTART:'+ds+'T080000','DTEND:'+ds+'T081500','SUMMARY:'+x('Nachfassen: '+name),...(val('#f_adresse')?['LOCATION:'+x(val('#f_adresse'))]:[]),'DESCRIPTION:'+x(desc),
       'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+x('Nachfassen: '+name),'TRIGGER:PT0S','END:VALARM','END:VEVENT','END:VCALENDAR'].map(fold).join('\r\n');
     download('nachfassen-'+d+'.ics',ics,'text/calendar');
     toast('Termin erstellt – Datei öffnen und speichern');
@@ -300,7 +309,7 @@ function openDetail(id){
 }
 function collect(){
   const g=i=>$(i).value.trim();
-  Object.assign(cur,{mpe:$('#f_mpe').value,info:$('#f_info').value.trim(),status:g('#f_status'),faellig:g('#f_faellig'),name:g('#f_name'),tel:g('#f_tel'),objekt:g('#f_objekt'),
+  Object.assign(cur,{mpe:$('#f_mpe').value,info:$('#f_info').value.trim(),status:g('#f_status'),faellig:g('#f_faellig'),name:g('#f_name'),tel:g('#f_tel'),adresse:g('#f_adresse'),objekt:g('#f_objekt'),
     tippgeber:g('#f_tipp'),nr:g('#f_nr'),nachgefasst:g('#f_nach'),datum:g('#f_datum'),letzter:g('#f_letzter'),
     ewe:$('#f_ewe').checked,fio:$('#f_fio').checked});
   if(cur.ampel==='gelb'&&(!cur.faellig||cur.faellig<=today()))cur.faellig=nextMonday();
@@ -336,7 +345,7 @@ function download(name,text,type){
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),3000)}
 $('#exJson').onclick=()=>{download(`eigentuemerliste-${today()}.json`,JSON.stringify({app:'eigentuemerliste',version:1,leads},null,1),'application/json');toast('Sicherung gespeichert')};
 $('#exCsv').onclick=()=>{
-  const cols=[['nr','Nr.'],['name','Name'],['tel','Telefon'],['objekt','Adresse / Objekt'],['ewe','EWE'],['fio','FIO erfasst'],['tippgeber','Tippgeber'],['datum','Datum'],['status','Status'],['mpe','MPE'],['nachgefasst','Nachgefasst'],['info','Notiz'],['letzter','Letzter Kontakt'],['faellig','Nachfassen am'],['ampel','Ampel']];
+  const cols=[['nr','Nr.'],['name','Name'],['tel','Telefon'],['adresse','Adresse'],['objekt','Objekt'],['ewe','EWE'],['fio','FIO erfasst'],['tippgeber','Tippgeber'],['datum','Datum'],['status','Status'],['mpe','MPE'],['nachgefasst','Nachgefasst'],['info','Notiz'],['letzter','Letzter Kontakt'],['faellig','Nachfassen am'],['ampel','Ampel']];
   const cell=v=>'"'+String(typeof v==='boolean'?(v?'Ja':'Nein'):v??'').replace(/"/g,'""')+'"';
   const csv='﻿'+[cols.map(c=>cell(c[1])).join(';'),...leads.map(l=>cols.map(c=>cell(c[0]==='ampel'?(AMP[l.ampel]?.n||''):l[c[0]])).join(';'))].join('\r\n');
   download(`eigentuemerliste-${today()}.csv`,csv,'text/csv');toast('CSV gespeichert')};

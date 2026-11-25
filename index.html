@@ -101,6 +101,7 @@ textarea.f{min-height:120px;resize:vertical}
 .menu p{color:var(--muted);font-size:14px;margin:4px 0 14px}
 h2{font:400 22px var(--serif);margin:6px 0 0}
 .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--line);padding:10px 16px;border-radius:12px;z-index:50;display:none;max-width:90%}
+.fab2{bottom:calc(max(20px,env(safe-area-inset-bottom)) + 74px);width:48px;height:48px;font-size:21px;background:var(--surface2);color:var(--text);border:1px solid var(--line);right:max(24px,env(safe-area-inset-right))}
 .card.sel{border-color:var(--accent);background:var(--surface2)}
 .top{position:relative;justify-content:center;text-align:center}
 .top .icon-btn{position:absolute;right:0;top:50%;transform:translateY(-50%)}
@@ -135,6 +136,7 @@ h1 small::after{content:'';display:block;width:36px;height:2px;background:var(--
   </div>
 </header>
 <main><button class="banner" id="banner" hidden></button><div class="count" id="count"></div><div id="list"></div></main>
+<button class="fab fab2" id="mailBtn" aria-label="Aus Mail anlegen">📋</button>
 <button class="fab" id="add" aria-label="Neuer Eintrag">+</button>
 
 <div class="sheet" id="detail"><div class="sheet-in" id="detailIn"></div></div>
@@ -148,8 +150,16 @@ h1 small::after{content:'';display:block;width:36px;height:2px;background:var(--
     <button class="btn" id="exCsv">Als CSV (Excel)</button>
   </div>
   <input type="file" id="file" accept=".json,application/json" hidden>
-  <p id="ver" style="margin-top:22px">Version 25.11.2026, 22:00</p>
+  <p id="ver" style="margin-top:22px">Version 25.11.2026, 22:15</p>
   <p>Beim Laden einer Sicherung kannst du wählen: mit der bestehenden Liste zusammenführen oder sie ersetzen.</p>
+</div></div>
+<div class="sheet" id="paste"><div class="sheet-in menu">
+  <div class="sheet-top"><button class="link" id="pasteClose">‹ Zurück</button></div>
+  <h2>Aus Mail anlegen</h2>
+  <p>Den Text der Lead-Mail kopieren und hier einfügen. Die App liest Name, Telefon, E-Mail, Adresse und Objekt heraus.</p>
+  <div class="actions" style="margin-top:0"><button class="btn" id="pasteClip">📋 Aus Zwischenablage einfügen</button></div>
+  <textarea class="f" id="pasteText" style="margin-top:14px;min-height:240px" placeholder="… oder hier den Mailtext einfügen"></textarea>
+  <div class="savebar"><button class="btn primary" id="pasteGo">Kontakt anlegen</button></div>
 </div></div>
 <div class="toast" id="toast"></div>
 
@@ -272,9 +282,9 @@ function quickAmpel(id,a){
 
 /* Detail */
 let cur=null;
-function openDetail(id){
+function openDetail(id,preset){
   const isNew=!id;
-  cur=isNew?{id:uid(),nr:'',name:'',tel:'',objekt:'',adresse:'',strasse:'',plz:'',ort:'',ewe:false,fio:false,tippgeber:'',datum:today(),status:'Ausstehend',nachgefasst:'Nein',info:'',letzter:'',faellig:'',ampel:'',mpe:'',updated:0}
+  cur=isNew?{id:uid(),nr:'',name:'',tel:'',email:'',objekt:'',adresse:'',strasse:'',plz:'',ort:'',ewe:false,fio:false,tippgeber:'',datum:today(),status:'Ausstehend',nachgefasst:'Nein',info:'',letzter:'',faellig:'',ampel:'',mpe:'',updated:0,...(preset||{})}
            :{ampel:'',mpe:'',...leads.find(l=>l.id===id)};
   selId=isNew?null:cur.id;document.querySelectorAll('.card.sel').forEach(c=>c.classList.remove('sel'));
   const sc=document.querySelector(`.card[data-id="${selId}"]`);if(sc)sc.classList.add('sel');
@@ -290,6 +300,7 @@ function openDetail(id){
   <h3 class="sec">Kontakt</h3>
   <label>Name</label><input class="f" id="f_name" value="${v('name')}">
   <label>Telefon</label><input class="f" id="f_tel" inputmode="tel" value="${v('tel')}">
+  <label>E-Mail</label><input class="f" id="f_email" type="email" inputmode="email" value="${v('email')}">
   <label>Straße und Hausnummer</label><input class="f" id="f_strasse" autocomplete="street-address" value="${v('strasse')}">
   ${cur.adresse?`<div class="hint">Bisher eingetragen: ${esc(cur.adresse)}</div><button type="button" class="btn" id="takeAddr" style="margin-top:6px">⤵ Übernehmen</button>`:''}
   <div class="addr"><div><label>PLZ</label><input class="f" id="f_plz" inputmode="numeric" maxlength="5" value="${v('plz')}"></div>
@@ -336,7 +347,7 @@ function openDetail(id){
     const x=s=>String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n');
     const amp=cur.ampel?AMP[cur.ampel].n+' ('+AMP[cur.ampel].t+')':'';
     const secs=[
-      ['KONTAKT',[val('#f_name')&&'Name: '+val('#f_name'),val('#f_tel')&&'Telefon: '+val('#f_tel'),adr&&'Adresse: '+adr,val('#f_objekt')&&'Objekt: '+val('#f_objekt'),val('#f_tipp')&&'Tippgeber: '+val('#f_tipp')]],
+      ['KONTAKT',[val('#f_name')&&'Name: '+val('#f_name'),val('#f_tel')&&'Telefon: '+val('#f_tel'),val('#f_email')&&'E-Mail: '+val('#f_email'),adr&&'Adresse: '+adr,val('#f_objekt')&&'Objekt: '+val('#f_objekt'),val('#f_tipp')&&'Tippgeber: '+val('#f_tipp')]],
       ['STAND',['Status: '+val('#f_status')+(amp?'   Ampel: '+amp:''),val('#f_mpe')&&'MPE: '+val('#f_mpe'),val('#f_letzter')&&'Letzter Kontakt: '+fmt(val('#f_letzter'))]],
       ['NOTIZ',[val('#f_info')]]
     ].map(([h,r])=>[h,r.filter(Boolean)]).filter(([h,r])=>r.length);
@@ -367,7 +378,7 @@ function openDetail(id){
 }
 function collect(){
   const g=i=>$(i).value.trim();
-  Object.assign(cur,{mpe:$('#f_mpe').value,info:$('#f_info').value.trim(),status:g('#f_status'),faellig:g('#f_faellig'),name:g('#f_name'),tel:g('#f_tel'),strasse:g('#f_strasse'),plz:g('#f_plz'),ort:g('#f_ort'),objekt:g('#f_objekt'),
+  Object.assign(cur,{mpe:$('#f_mpe').value,info:$('#f_info').value.trim(),status:g('#f_status'),faellig:g('#f_faellig'),name:g('#f_name'),tel:g('#f_tel'),email:g('#f_email'),strasse:g('#f_strasse'),plz:g('#f_plz'),ort:g('#f_ort'),objekt:g('#f_objekt'),
     tippgeber:g('#f_tipp'),nr:g('#f_nr'),nachgefasst:g('#f_nach'),datum:g('#f_datum'),letzter:g('#f_letzter'),
     ewe:$('#f_ewe').checked,fio:$('#f_fio').checked});
   if(cur.strasse&&(cur.plz||cur.ort))cur.adresse='';
@@ -402,13 +413,67 @@ $('#menuBtn').onclick=()=>$('#menu').classList.add('open');
 $('#menuClose').onclick=()=>$('#menu').classList.remove('open');
 history.scrollRestoration='manual';
 
+/* Aus Mail anlegen */
+const MAIL_LABELS=['Eigentümer:in','Eigentümer','Name','Telefon','Telefonnummer','Mobil','E-Mail','Email','Kontakt ist Eigentümer:in','Erreichbarkeit','Immobilienwert','Adresse','Immobilientyp','Wohnfläche','Grundstücksfläche','Zimmer','Baujahr','Gebäudeart','Etage','Zustand','Heizung','Vermietet','Verkaufszeitraum','Nachricht','Anmerkung','Anmerkungen'].sort((a,b)=>b.length-a.length);
+const MAIL_SOURCES=[[/Eigentümeranfrage\s+Plus/i,'Immoscout Lead']];
+function mapObjekt(t){t=String(t||'').toLowerCase();if(!t)return'';
+  if(/mehrfamilien|mfh|zweifamilien/.test(t))return'Mehrfamilienhaus';
+  if(/doppelhaus|dhh/.test(t))return'Doppelhaus';
+  if(/einfamilien|efh/.test(t))return'Einfamilienhaus';
+  if(/wohnung|etw|apartment/.test(t))return'Wohnung';
+  if(/gewerbe|büro|laden|praxis/.test(t))return'Gewerbe';
+  return'Sonstiges'}
+function parseMail(txt){
+  const lines=String(txt).replace(/\r/g,'').split('\n').map(l=>l.replace(/\u00a0/g,' ').trim()).filter(Boolean);
+  const low=lines.map(l=>l.toLowerCase().replace(/:$/,''));
+  const isLabel=x=>MAIL_LABELS.some(l=>l.toLowerCase()===x);
+  const kv=[];
+  for(let i=0;i<lines.length;i++){
+    const ln=lines[i],lw=ln.toLowerCase();
+    if(isLabel(low[i])&&i+1<lines.length&&!isLabel(low[i+1])){kv.push([ln.replace(/:$/,''),lines[i+1]]);i++;continue}
+    const lab=MAIL_LABELS.find(l=>{const k=l.toLowerCase();return lw.startsWith(k)&&/^[\s:]/.test(lw.slice(k.length))&&lw.slice(k.length).replace(/^[\s:]+/,'')});
+    if(lab){kv.push([lab,ln.slice(lab.length).replace(/^[\s:]+/,'')]);continue}
+    const t=ln.split('\t');if(t.length>=2&&t[0].trim()&&t.slice(1).join(' ').trim())kv.push([t[0].trim(),t.slice(1).join(' ').trim()]);
+  }
+  const g=(...ks)=>{for(const k of ks){const f=kv.find(([a])=>a.toLowerCase()===k.toLowerCase());if(f)return f[1]}return''};
+  const used=new Set();const take=(...ks)=>{ks.forEach(k=>used.add(k.toLowerCase()));return g(...ks)};
+  const name=take('Eigentümer:in','Eigentümer','Name').replace(/^(Herr|Frau|Hr\.|Fr\.)\s+/i,'').trim();
+  const tel=take('Telefon','Telefonnummer','Mobil');
+  const email=take('E-Mail','Email');
+  const adr=take('Adresse');const a=adr?parseAddr(adr):{strasse:'',plz:'',ort:''};
+  const typ=take('Immobilientyp');
+  const rest=kv.filter(([k])=>!used.has(k.toLowerCase())).map(([k,v])=>k+': '+v);
+  const src=(MAIL_SOURCES.find(([re])=>re.test(txt))||[])[1]||'';
+  const p={name,tel,email,strasse:a.strasse||'',plz:a.plz,ort:a.ort,objekt:mapObjekt(typ),tippgeber:src,notiz:rest.join('\n')};
+  if(adr&&!a.strasse)p.adresse=adr;
+  if(typ&&p.objekt==='Sonstiges')p.notiz=('Immobilientyp: '+typ+(p.notiz?'\n'+p.notiz:''));
+  p.info=p.notiz;delete p.notiz;
+  return p;
+}
+const digitsOf=x=>String(x||'').replace(/\D/g,'');
+function findDup(p){const d=digitsOf(p.tel).slice(-8),nm=(p.name||'').toLowerCase();
+  return leads.find(l=>(d.length>=7&&digitsOf(l.tel).slice(-8)===d)||(nm&&(l.name||'').toLowerCase()===nm))}
+$('#mailBtn').onclick=()=>{$('#pasteText').value='';$('#paste').classList.add('open');$('#paste').scrollTop=0};
+$('#pasteClose').onclick=()=>$('#paste').classList.remove('open');
+$('#pasteClip').onclick=async()=>{try{$('#pasteText').value=await navigator.clipboard.readText();if(!$('#pasteText').value)toast('Zwischenablage ist leer')}catch(e){toast('Zugriff nicht erlaubt – Text bitte unten einfügen')}};
+$('#pasteGo').onclick=()=>{
+  const p=parseMail($('#pasteText').value);
+  if(!p.name&&!p.tel&&!p.strasse&&!p.adresse){toast('Nichts erkannt – ist das die Lead-Mail?');return}
+  const dup=findDup(p);
+  if(dup&&!confirm('„'+title(dup)+'“ gibt es schon in der Liste.\n\nOK = trotzdem neu anlegen\nAbbrechen = bestehenden Kontakt öffnen')){
+    $('#paste').classList.remove('open');openDetail(dup.id);return}
+  $('#paste').classList.remove('open');
+  openDetail(null,{...p,datum:today()});
+  toast('Aus Mail erkannt – bitte prüfen, dann Speichern');
+};
+
 /* Sicherung */
 function download(name,text,type){
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),3000)}
 $('#exJson').onclick=()=>{download(`eigentuemerliste-${today()}.json`,JSON.stringify({app:'eigentuemerliste',version:1,leads},null,1),'application/json');toast('Sicherung gespeichert')};
 $('#exCsv').onclick=()=>{
-  const cols=[['nr','Nr.'],['name','Name'],['tel','Telefon'],['strasse','Straße'],['plz','PLZ'],['ort','Ort'],['adresse','Adresse (alt)'],['objekt','Objekt'],['ewe','EWE'],['fio','FIO erfasst'],['tippgeber','Tippgeber'],['datum','Datum'],['status','Status'],['mpe','MPE'],['nachgefasst','Nachgefasst'],['info','Notiz'],['letzter','Letzter Kontakt'],['faellig','Nachfassen am'],['ampel','Ampel']];
+  const cols=[['nr','Nr.'],['name','Name'],['tel','Telefon'],['email','E-Mail'],['strasse','Straße'],['plz','PLZ'],['ort','Ort'],['adresse','Adresse (alt)'],['objekt','Objekt'],['ewe','EWE'],['fio','FIO erfasst'],['tippgeber','Tippgeber'],['datum','Datum'],['status','Status'],['mpe','MPE'],['nachgefasst','Nachgefasst'],['info','Notiz'],['letzter','Letzter Kontakt'],['faellig','Nachfassen am'],['ampel','Ampel']];
   const cell=v=>'"'+String(typeof v==='boolean'?(v?'Ja':'Nein'):v??'').replace(/"/g,'""')+'"';
   const csv='﻿'+[cols.map(c=>cell(c[1])).join(';'),...leads.map(l=>cols.map(c=>cell(c[0]==='ampel'?(AMP[l.ampel]?.n||''):l[c[0]])).join(';'))].join('\r\n');
   download(`eigentuemerliste-${today()}.csv`,csv,'text/csv');toast('CSV gespeichert')};
@@ -418,7 +483,7 @@ $('#file').addEventListener('change',async e=>{
   try{
     const d=JSON.parse(await f.text());const arr=Array.isArray(d)?d:d.leads;
     if(!Array.isArray(arr))throw 0;
-    const inc=arr.filter(x=>x&&typeof x==='object').map(x=>({id:x.id||uid(),nr:'',name:'',tel:'',objekt:'',strasse:'',plz:'',ort:'',ewe:false,fio:false,tippgeber:'',datum:'',status:'Ausstehend',nachgefasst:'Nein',info:'',letzter:'',faellig:'',ampel:'',mpe:'',updated:0,...x})).map(migrate);
+    const inc=arr.filter(x=>x&&typeof x==='object').map(x=>({id:x.id||uid(),nr:'',name:'',tel:'',email:'',objekt:'',strasse:'',plz:'',ort:'',ewe:false,fio:false,tippgeber:'',datum:'',status:'Ausstehend',nachgefasst:'Nein',info:'',letzter:'',faellig:'',ampel:'',mpe:'',updated:0,...x})).map(migrate);
     let replace=true;
     if(leads.length){replace=confirm(`${inc.length} Einträge in der Datei.\n\nOK = bestehende Liste (${leads.length}) ERSETZEN\nAbbrechen = zusammenführen`)}
     if(replace){leads=inc}else{

@@ -301,7 +301,7 @@ function openDetail(id){
     const x=s=>String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n');
     const amp=cur.ampel?AMP[cur.ampel].n+' ('+AMP[cur.ampel].t+')':'';
     const secs=[
-      ['KONTAKT',[val('#f_name')&&'Name: '+val('#f_name'),val('#f_tel')&&'Telefon: '+val('#f_tel'),adr&&'Adresse: '+adr,adr&&'Karte: '+mapsUrl(adr),val('#f_objekt')&&'Objekt: '+val('#f_objekt'),val('#f_tipp')&&'Tippgeber: '+val('#f_tipp')]],
+      ['KONTAKT',[val('#f_name')&&'Name: '+val('#f_name'),val('#f_tel')&&'Telefon: '+val('#f_tel'),adr&&'Adresse: '+adr,val('#f_objekt')&&'Objekt: '+val('#f_objekt'),val('#f_tipp')&&'Tippgeber: '+val('#f_tipp')]],
       ['STAND',['Status: '+val('#f_status')+(amp?'   Ampel: '+amp:''),val('#f_mpe')&&'MPE: '+val('#f_mpe'),val('#f_letzter')&&'Letzter Kontakt: '+fmt(val('#f_letzter'))]],
       ['NOTIZ',[val('#f_info')]]
     ].map(([h,r])=>[h,r.filter(Boolean)]).filter(([h,r])=>r.length);

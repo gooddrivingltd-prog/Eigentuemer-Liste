@@ -248,9 +248,7 @@ function openDetail(id){
   <label>Telefon</label><input class="f" id="f_tel" inputmode="tel" value="${v('tel')}">
   <label>Adresse / Objekt</label><input class="f" id="f_objekt" value="${v('objekt')}">
   <h3 class="sec">Nachfassen</h3>
-  <label>Notiz mit Datum anhängen (setzt „Letzter Kontakt“ auf heute)</label>
-  <div class="quick"><input class="f" id="quick" placeholder="z. B. nicht erreicht, Mailbox"><button class="btn" id="quickBtn">Hinzufügen</button></div>
-  <label>Aktuelle Info</label><textarea class="f" id="f_info">${v('info')}</textarea>
+  <label>Notiz</label><textarea class="f" id="f_info">${v('info')}</textarea>
   <div class="two"><div><label>Status</label><select class="f" id="f_status">${STATUS.map(s=>`<option ${s===cur.status?'selected':''}>${s}</option>`).join('')}</select></div>
   <div><label>Nachfassen am</label><input class="f" type="date" id="f_faellig" value="${v('faellig')}"></div></div>
   <button type="button" class="btn" id="calBtn" style="margin-top:10px;width:100%">📅 In Kalender eintragen</button>
@@ -280,7 +278,7 @@ function openDetail(id){
     const desc=[
       block('KONTAKT',[val('#f_name')&&'Name: '+val('#f_name'),val('#f_tel')&&'Telefon: '+val('#f_tel'),val('#f_objekt')&&'Adresse / Objekt: '+val('#f_objekt'),val('#f_tipp')&&'Tippgeber: '+val('#f_tipp')]),
       block('STAND',['Status: '+val('#f_status')+(amp?'   Ampel: '+amp:''),val('#f_mpe')&&'MPE: '+val('#f_mpe'),val('#f_letzter')&&'Letzter Kontakt: '+fmt(val('#f_letzter'))]),
-      block('AKTUELLE INFO',[val('#f_info')])
+      block('NOTIZ',[val('#f_info')])
     ].filter(Boolean).join('\n\n');
     const ds=d.replace(/-/g,'');
     const fold=l=>{let o='';while(l.length>60){o+=l.slice(0,60)+'\r\n ';l=l.slice(60)}return o+l};
@@ -299,19 +297,13 @@ function openDetail(id){
     $('#ampHint').textContent=cur.ampel?hint[cur.ampel]:'';
     if(cur.ampel==='gelb')$('#f_faellig').value=nextMonday();
   };
-  $('#quickBtn').onclick=()=>{
-    const t=$('#quick').value.trim();if(!t)return;
-    if(cur.ampel==='gelb')$('#f_faellig').value=nextMonday();
-    const ta=$('#f_info');ta.value=`${short(today())} ${t}`+(ta.value?'\n'+ta.value:'');
-    $('#f_letzter').value=today();$('#quick').value='';
-  };
 }
 function collect(){
   const g=i=>$(i).value.trim();
   Object.assign(cur,{mpe:$('#f_mpe').value,info:$('#f_info').value.trim(),status:g('#f_status'),faellig:g('#f_faellig'),name:g('#f_name'),tel:g('#f_tel'),objekt:g('#f_objekt'),
     tippgeber:g('#f_tipp'),nr:g('#f_nr'),nachgefasst:g('#f_nach'),datum:g('#f_datum'),letzter:g('#f_letzter'),
     ewe:$('#f_ewe').checked,fio:$('#f_fio').checked});
-  if(cur.ampel==='gelb'&&!cur.faellig)cur.faellig=nextMonday();
+  if(cur.ampel==='gelb'&&(!cur.faellig||cur.faellig<=today()))cur.faellig=nextMonday();
 }
 function commit(){
   cur.updated=Date.now();
@@ -344,7 +336,7 @@ function download(name,text,type){
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),3000)}
 $('#exJson').onclick=()=>{download(`eigentuemerliste-${today()}.json`,JSON.stringify({app:'eigentuemerliste',version:1,leads},null,1),'application/json');toast('Sicherung gespeichert')};
 $('#exCsv').onclick=()=>{
-  const cols=[['nr','Nr.'],['name','Name'],['tel','Telefon'],['objekt','Adresse / Objekt'],['ewe','EWE'],['fio','FIO erfasst'],['tippgeber','Tippgeber'],['datum','Datum'],['status','Status'],['mpe','MPE'],['nachgefasst','Nachgefasst'],['info','Aktuelle Info'],['letzter','Letzter Kontakt'],['faellig','Nachfassen am'],['ampel','Ampel']];
+  const cols=[['nr','Nr.'],['name','Name'],['tel','Telefon'],['objekt','Adresse / Objekt'],['ewe','EWE'],['fio','FIO erfasst'],['tippgeber','Tippgeber'],['datum','Datum'],['status','Status'],['mpe','MPE'],['nachgefasst','Nachgefasst'],['info','Notiz'],['letzter','Letzter Kontakt'],['faellig','Nachfassen am'],['ampel','Ampel']];
   const cell=v=>'"'+String(typeof v==='boolean'?(v?'Ja':'Nein'):v??'').replace(/"/g,'""')+'"';
   const csv='﻿'+[cols.map(c=>cell(c[1])).join(';'),...leads.map(l=>cols.map(c=>cell(c[0]==='ampel'?(AMP[l.ampel]?.n||''):l[c[0]])).join(';'))].join('\r\n');
   download(`eigentuemerliste-${today()}.csv`,csv,'text/csv');toast('CSV gespeichert')};

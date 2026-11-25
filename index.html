@@ -156,7 +156,7 @@ h1 small::after{content:'';display:block;width:36px;height:2px;background:var(--
     <button class="btn" id="exCsv">Als CSV (Excel)</button>
   </div>
   <input type="file" id="file" accept=".json,application/json" hidden>
-  <p id="ver" style="margin-top:22px">Version 25.11.2026, 22:30</p>
+  <p id="ver" style="margin-top:22px">Version 25.11.2026, 22:45</p>
   <p>Beim Laden einer Sicherung kannst du wählen: mit der bestehenden Liste zusammenführen oder sie ersetzen.</p>
 </div></div>
 <div class="sheet" id="paste"><div class="sheet-in menu">
@@ -439,7 +439,7 @@ function mapObjekt(t){t=String(t||'').toLowerCase();if(!t)return'';
   if(/gewerbe|büro|laden|praxis/.test(t))return'Gewerbe';
   return'Sonstiges'}
 function parseMail(txt){
-  const lines=String(txt).replace(/\r/g,'').split('\n').map(l=>l.replace(/\u00a0/g,' ').trim()).filter(Boolean);
+  const lines=String(txt).replace(/\r/g,'').replace(/\[([^\]]*)\]\((?:https?:|mailto:|tel:)[^)]*\)/g,'$1').split('\n').map(l=>l.replace(/\u00a0/g,' ').trim()).filter(Boolean);
   const low=lines.map(l=>l.toLowerCase().replace(/:$/,''));
   const isLabel=x=>MAIL_LABELS.some(l=>l.toLowerCase()===x);
   const kv=[];

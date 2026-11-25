@@ -144,9 +144,11 @@ h2{font:400 22px var(--serif);margin:6px 0 0}
 const KEY='eigentuemerliste.v1';
 const STATUS=['Ausstehend','Auftrag','Verkauft','Erledigt'];
 const MPE=['Zu erledigen','Erledigt','Nicht notwendig'];
-const OBJEKT=['Einfamilienhaus','Mehrfamilienhaus','Wohnung','Gewerbe','Sonstiges'];
+const OBJEKT=['Einfamilienhaus','Doppelhaus','Mehrfamilienhaus','Wohnung','Gewerbe','Sonstiges'];
+const mapsUrl=a=>'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(a);
 function objektArt(t){t=String(t||'');
   if(/\bMFH\b|Mehrfamilienhaus/i.test(t))return'Mehrfamilienhaus';
+  if(/\bDHH\b|Doppelhaus/i.test(t))return'Doppelhaus';
   if(/\bEFH\b|Einfamilienhaus/i.test(t))return'Einfamilienhaus';
   if(/\bWNG\b|\bETW\b|Wohnung|Eigentumswohnung/i.test(t))return'Wohnung';
   if(/Gewerbe/i.test(t))return'Gewerbe';
@@ -167,6 +169,7 @@ const short=iso=>iso?iso.slice(8,10)+'.'+iso.slice(5,7)+'.':'';
 
 let leads=[]; const ui={q:'',status:'Alle',quelle:'',sort:'faellig'};
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'[]');leads=Array.isArray(d)?d:[]}catch(e){leads=[]}
+  try{if(!localStorage.getItem(KEY+'.dh')){leads.forEach(l=>{if(!l.objekt&&/\bDHH\b|Doppelhaus/i.test(l.adresse||''))l.objekt='Doppelhaus'});localStorage.setItem(KEY+'.dh','1');save()}}catch(e){}
   if(leads.some(l=>l.status==='MPE'||l.nachgefasst==='MPE'||l.mpe===undefined||l.quelle!==undefined||l.adresse===undefined||l.strasse===undefined)){leads.forEach(migrate);save()}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(leads))}catch(e){toast('Speichern nicht möglich')}}
 function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2600)}
@@ -261,6 +264,7 @@ function openDetail(id){
   ${cur.adresse?`<div class="hint">Bisher eingetragen: ${esc(cur.adresse)}</div>`:''}
   <div class="addr"><div><label>PLZ</label><input class="f" id="f_plz" inputmode="numeric" maxlength="5" value="${v('plz')}"></div>
   <div><label>Ort</label><input class="f" id="f_ort" value="${v('ort')}"></div></div>
+  <button type="button" class="btn" id="mapBtn" style="margin-top:10px;width:100%">📍 In Maps öffnen</button>
   <label>Objekt</label><select class="f" id="f_objekt"><option value="">–</option>${OBJEKT.map(o=>`<option ${o===cur.objekt?'selected':''}>${o}</option>`).join('')}</select>
   <h3 class="sec">Nachfassen</h3>
   <label>Notiz</label><textarea class="f" id="f_info">${v('info')}</textarea>
@@ -282,6 +286,12 @@ function openDetail(id){
   $('#dBack').onclick=closeDetail;
   $('#dSave').onclick=()=>{collect();commit();closeDetail();toast('Gespeichert')};
   if(!isNew)$('#dDel').onclick=()=>{if(confirm('„'+title(cur)+'“ wirklich löschen?')){leads=leads.filter(l=>l.id!==cur.id);save();closeDetail();render();toast('Gelöscht')}};
+  $('#mapBtn').onclick=()=>{
+    const g=i=>$(i).value.trim();
+    const a=[g('#f_strasse'),[g('#f_plz'),g('#f_ort')].filter(Boolean).join(' ')].filter(Boolean).join(', ')||cur.adresse||'';
+    if(!a){toast('Erst eine Adresse eintragen');return}
+    window.open(mapsUrl(a),'_blank','noopener');
+  };
   $('#calBtn').onclick=()=>{
     const d=$('#f_faellig').value;
     if(!d){toast('Erst „Nachfassen am“ eintragen');return}
@@ -291,13 +301,13 @@ function openDetail(id){
     const x=s=>String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n');
     const amp=cur.ampel?AMP[cur.ampel].n+' ('+AMP[cur.ampel].t+')':'';
     const secs=[
-      ['KONTAKT',[val('#f_name')&&'Name: '+val('#f_name'),val('#f_tel')&&'Telefon: '+val('#f_tel'),adr&&'Adresse: '+adr,val('#f_objekt')&&'Objekt: '+val('#f_objekt'),val('#f_tipp')&&'Tippgeber: '+val('#f_tipp')]],
+      ['KONTAKT',[val('#f_name')&&'Name: '+val('#f_name'),val('#f_tel')&&'Telefon: '+val('#f_tel'),adr&&'Adresse: '+adr,adr&&'Karte: '+mapsUrl(adr),val('#f_objekt')&&'Objekt: '+val('#f_objekt'),val('#f_tipp')&&'Tippgeber: '+val('#f_tipp')]],
       ['STAND',['Status: '+val('#f_status')+(amp?'   Ampel: '+amp:''),val('#f_mpe')&&'MPE: '+val('#f_mpe'),val('#f_letzter')&&'Letzter Kontakt: '+fmt(val('#f_letzter'))]],
       ['NOTIZ',[val('#f_info')]]
     ].map(([h,r])=>[h,r.filter(Boolean)]).filter(([h,r])=>r.length);
     const desc=secs.map(([h,r])=>[h,...r].join('\n')).join('\n\n');
     const he=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\r?\n/g,'<br>');
-    const html='<html><body>'+secs.map(([h,r])=>'<b>'+h+'</b><br>'+r.map(he).join('<br>')).join('<br><br>')+'</body></html>';
+    const html='<html><body>'+secs.map(([h,r])=>'<b>'+h+'</b><br>'+r.map(he).join('<br>').replace(/Karte: (https?:\/\/[^\s<]+)/,'<a href="$1">In Google Maps öffnen</a>')).join('<br><br>')+'</body></html>';
     const ds=d.replace(/-/g,'');
     const nx=new Date(d+'T12:00:00');nx.setDate(nx.getDate()+1);
     const ds2=nx.getFullYear()+String(nx.getMonth()+1).padStart(2,'0')+String(nx.getDate()).padStart(2,'0');

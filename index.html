@@ -101,6 +101,21 @@ textarea.f{min-height:120px;resize:vertical}
 .menu p{color:var(--muted);font-size:14px;margin:4px 0 14px}
 h2{font:400 22px var(--serif);margin:6px 0 0}
 .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--line);padding:10px 16px;border-radius:12px;z-index:50;display:none;max-width:90%}
+.card.sel{border-color:var(--accent);background:var(--surface2)}
+@media(min-width:1000px){
+  body{display:grid;grid-template-columns:480px 1fr;grid-template-rows:auto 1fr;align-items:start;height:100vh;overflow:hidden}
+  header{grid-column:1;grid-row:1;position:relative}
+  main{grid-column:1;grid-row:2;max-width:none;margin:0;padding:14px 16px 100px;height:100%;overflow-y:auto;scrollbar-width:thin}
+  #detail{display:block;position:static;grid-column:2;grid-row:1/span 2;height:100vh;border-left:1px solid var(--line);overflow-y:auto;background:var(--bg)}
+  .sheet-in{max-width:820px;padding:24px 32px 0}
+  #detailIn:empty::before{content:'Kontakt links auswählen oder mit + einen neuen anlegen';display:block;text-align:center;color:var(--muted);font:400 20px var(--serif);padding-top:32vh}
+  .savebar{position:sticky;bottom:0;left:auto;right:auto;margin:24px -32px 0;padding:18px 32px 20px;background:linear-gradient(transparent,var(--bg) 30%)}
+  .savebar .btn{max-width:none}
+  .fab{right:auto;left:400px;bottom:24px}
+  .toast{left:calc(480px + 50%);bottom:24px}
+  .two{gap:14px}
+  .card:hover{background:var(--surface2)}
+}
 </style>
 </head>
 <body>
@@ -167,7 +182,7 @@ const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth
 const fmt=iso=>iso?iso.split('-').reverse().join('.'):'';
 const short=iso=>iso?iso.slice(8,10)+'.'+iso.slice(5,7)+'.':'';
 
-let leads=[]; const ui={q:'',status:'Alle',quelle:'',sort:'faellig'};
+let selId=null;let leads=[]; const ui={q:'',status:'Alle',quelle:'',sort:'faellig'};
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'[]');leads=Array.isArray(d)?d:[]}catch(e){leads=[]}
   try{if(!localStorage.getItem(KEY+'.dh')){leads.forEach(l=>{if(!l.objekt&&/\bDHH\b|Doppelhaus/i.test(l.adresse||''))l.objekt='Doppelhaus'});localStorage.setItem(KEY+'.dh','1');save()}}catch(e){}
   if(leads.some(l=>l.status==='MPE'||l.nachgefasst==='MPE'||l.mpe===undefined||l.quelle!==undefined||l.adresse===undefined||l.strasse===undefined)){leads.forEach(migrate);save()}}
@@ -223,7 +238,7 @@ function render(keep){
 }
 function cardHtml(l){
     const h=telHref(l.tel);
-    return `<div class="card a-${l.ampel||'none'}" data-id="${l.id}" role="button" tabindex="0">
+    return `<div class="card a-${l.ampel||'none'}${l.id===selId?' sel':''}" data-id="${l.id}" role="button" tabindex="0">
       <div class="row"><div style="min-width:0"><h3 class="name">${esc(title(l))}</h3>
         ${l.name&&addr(l)?`<div class="obj">${esc(addr(l))}</div>`:''}</div>
         ${h?`<a class="call" href="${h}" aria-label="Anrufen" data-call>☎</a>`:''}</div>
@@ -248,6 +263,8 @@ function openDetail(id){
   const isNew=!id;
   cur=isNew?{id:uid(),nr:'',name:'',tel:'',objekt:'',adresse:'',strasse:'',plz:'',ort:'',ewe:false,fio:false,tippgeber:'',datum:today(),status:'Ausstehend',nachgefasst:'Nein',info:'',letzter:'',faellig:'',ampel:'',mpe:'',updated:0}
            :{ampel:'',mpe:'',...leads.find(l=>l.id===id)};
+  selId=isNew?null:cur.id;document.querySelectorAll('.card.sel').forEach(c=>c.classList.remove('sel'));
+  const sc=document.querySelector(`.card[data-id="${selId}"]`);if(sc)sc.classList.add('sel');
   const v=k=>esc(cur[k]);
   const h=telHref(cur.tel);
   $('#detailIn').innerHTML=`
@@ -344,7 +361,11 @@ function commit(){
   if(i<0)leads.unshift(cur);else leads[i]=cur;
   save();render();
 }
-function closeDetail(){$('#detail').classList.remove('open');cur=null}
+function closeDetail(){$('#detail').classList.remove('open');cur=null;selId=null;$('#detailIn').innerHTML='';document.querySelectorAll('.card.sel').forEach(c=>c.classList.remove('sel'))}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&cur)closeDetail();
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'&&cur){e.preventDefault();$('#dSave').click()}
+});
 
 /* Events */
 $('#list').addEventListener('click',e=>{

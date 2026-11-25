@@ -248,6 +248,8 @@ function openDetail(id){
   <div class="two"><div><label>Status</label><select class="f" id="f_status">${STATUS.map(s=>`<option ${s===cur.status?'selected':''}>${s}</option>`).join('')}</select></div>
   <div><label>Nachfassen am</label><input class="f" type="date" id="f_faellig" value="${v('faellig')}"></div></div>
   <button type="button" class="btn" id="calBtn" style="margin-top:10px;width:100%">📅 In Kalender eintragen</button>
+  <div class="two"><div><label>Datum (Eingang)</label><input class="f" type="date" id="f_datum" value="${v('datum')}"></div>
+  <div><label>Letzter Kontakt</label><input class="f" type="date" id="f_letzter" value="${v('letzter')}"></div></div>
   <label>MPE (Marktpreiseinschätzung)</label>
   <select class="f" id="f_mpe"><option value="">–</option>${MPE.map(s=>`<option ${s===cur.mpe?'selected':''}>${s}</option>`).join('')}</select>
   <label>Name</label><input class="f" id="f_name" value="${v('name')}">
@@ -256,8 +258,6 @@ function openDetail(id){
   <label>Tippgeber</label><input class="f" id="f_tipp" list="dlTipp" value="${v('tippgeber')}">
   <div class="two"><div><label>Nr.</label><input class="f" id="f_nr" value="${v('nr')}"></div>
   <div><label>Nachgefasst</label><select class="f" id="f_nach">${['Nein','Ja'].map(s=>`<option ${s===cur.nachgefasst?'selected':''}>${s}</option>`).join('')}</select></div></div>
-  <div class="two"><div><label>Datum (Eingang)</label><input class="f" type="date" id="f_datum" value="${v('datum')}"></div>
-  <div><label>Letzter Kontakt</label><input class="f" type="date" id="f_letzter" value="${v('letzter')}"></div></div>
   <div class="two" style="margin-top:14px"><label class="toggle" style="margin:0"><input type="checkbox" id="f_ewe" ${cur.ewe?'checked':''}>EWE</label>
   <label class="toggle" style="margin:0"><input type="checkbox" id="f_fio" ${cur.fio?'checked':''}>In FIO erfasst</label></div>
   <div class="savebar"><button class="btn primary" id="dSave">Speichern</button></div>`;

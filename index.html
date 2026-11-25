@@ -283,18 +283,24 @@ function openDetail(id){
     const x=s=>String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n');
     const val=i=>$(i).value.trim();
     const amp=cur.ampel?AMP[cur.ampel].n+' ('+AMP[cur.ampel].t+')':'';
-    const block=(h,rows)=>{const r=rows.filter(Boolean);return r.length?[h,...r].join('\n'):''};
-    const desc=[
-      block('KONTAKT',[val('#f_name')&&'Name: '+val('#f_name'),val('#f_tel')&&'Telefon: '+val('#f_tel'),val('#f_adresse')&&'Adresse: '+val('#f_adresse'),val('#f_objekt')&&'Objekt: '+val('#f_objekt'),val('#f_tipp')&&'Tippgeber: '+val('#f_tipp')]),
-      block('STAND',['Status: '+val('#f_status')+(amp?'   Ampel: '+amp:''),val('#f_mpe')&&'MPE: '+val('#f_mpe'),val('#f_letzter')&&'Letzter Kontakt: '+fmt(val('#f_letzter'))]),
-      block('NOTIZ',[val('#f_info')])
-    ].filter(Boolean).join('\n\n');
+    const secs=[
+      ['KONTAKT',[val('#f_name')&&'Name: '+val('#f_name'),val('#f_tel')&&'Telefon: '+val('#f_tel'),val('#f_adresse')&&'Adresse: '+val('#f_adresse'),val('#f_objekt')&&'Objekt: '+val('#f_objekt'),val('#f_tipp')&&'Tippgeber: '+val('#f_tipp')]],
+      ['STAND',['Status: '+val('#f_status')+(amp?'   Ampel: '+amp:''),val('#f_mpe')&&'MPE: '+val('#f_mpe'),val('#f_letzter')&&'Letzter Kontakt: '+fmt(val('#f_letzter'))]],
+      ['NOTIZ',[val('#f_info')]]
+    ].map(([h,r])=>[h,r.filter(Boolean)]).filter(([h,r])=>r.length);
+    const desc=secs.map(([h,r])=>[h,...r].join('\n')).join('\n\n');
+    const he=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\r?\n/g,'<br>');
+    const html='<html><body>'+secs.map(([h,r])=>'<b>'+h+'</b><br>'+r.map(he).join('<br>')).join('<br><br>')+'</body></html>';
     const ds=d.replace(/-/g,'');
+    const nx=new Date(d+'T12:00:00');nx.setDate(nx.getDate()+1);
+    const ds2=nx.getFullYear()+String(nx.getMonth()+1).padStart(2,'0')+String(nx.getDate()).padStart(2,'0');
     const fold=l=>{let o='';while(l.length>60){o+=l.slice(0,60)+'\r\n ';l=l.slice(60)}return o+l};
     const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Eigentuemerliste//DE','CALSCALE:GREGORIAN','BEGIN:VEVENT',
       'UID:'+cur.id+'-'+ds+'@eigentuemerliste','DTSTAMP:'+new Date().toISOString().replace(/[-:]|\.\d{3}/g,''),
-      'DTSTART:'+ds+'T080000','DTEND:'+ds+'T081500','SUMMARY:'+x('Nachfassen: '+name),...(val('#f_adresse')?['LOCATION:'+x(val('#f_adresse'))]:[]),'DESCRIPTION:'+x(desc),
-      'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+x('Nachfassen: '+name),'TRIGGER:PT0S','END:VALARM','END:VEVENT','END:VCALENDAR'].map(fold).join('\r\n');
+      'DTSTART;VALUE=DATE:'+ds,'DTEND;VALUE=DATE:'+ds2,'TRANSP:TRANSPARENT','X-MICROSOFT-CDO-ALLDAYEVENT:TRUE',
+      'SUMMARY:'+x('Nachfassen: '+name),...(val('#f_adresse')?['LOCATION:'+x(val('#f_adresse'))]:[]),
+      'DESCRIPTION:'+x(desc),'X-ALT-DESC;FMTTYPE=text/html:'+html,
+      'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+x('Nachfassen: '+name),'TRIGGER:PT8H','END:VALARM','END:VEVENT','END:VCALENDAR'].map(fold).join('\r\n');
     download('nachfassen-'+d+'.ics',ics,'text/calendar');
     toast('Termin erstellt – Datei öffnen und speichern');
   };

@@ -159,7 +159,8 @@ h1 small::after{content:'';display:block;width:36px;height:2px;background:var(--
     <button class="btn" id="exCsv">Als CSV (Excel)</button>
   </div>
   <input type="file" id="file" accept=".json,application/json" hidden>
-  <p style="margin-top:22px">Beim Laden einer Sicherung kannst du wählen: mit der bestehenden Liste zusammenführen oder sie ersetzen.</p>
+  <p id="ver" style="margin-top:22px">Version 25.11.2026, 21:35</p>
+  <p>Beim Laden einer Sicherung kannst du wählen: mit der bestehenden Liste zusammenführen oder sie ersetzen.</p>
 </div></div>
 <div class="toast" id="toast"></div>
 
@@ -420,7 +421,11 @@ $('#file').addEventListener('change',async e=>{
 });
 
 load();render();
-if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+if('serviceWorker'in navigator&&location.protocol.startsWith('http')){
+  const had=!!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!cur)location.reload()});
+}
 </script>
 </body>
 </html>

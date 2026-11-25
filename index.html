@@ -274,12 +274,19 @@ function openDetail(id){
     if(!d){toast('Erst „Nachfassen am“ eintragen');return}
     const name=$('#f_name').value.trim()||$('#f_objekt').value.trim()||'Kontakt';
     const x=s=>String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n');
-    const desc=[$('#f_tel').value.trim()&&'Tel: '+$('#f_tel').value.trim(),$('#f_objekt').value.trim(),$('#f_info').value.trim().split('\n')[0]].filter(Boolean).join(' | ');
+    const val=i=>$(i).value.trim();
+    const amp=cur.ampel?AMP[cur.ampel].n+' ('+AMP[cur.ampel].t+')':'';
+    const block=(h,rows)=>{const r=rows.filter(Boolean);return r.length?[h,...r].join('\n'):''};
+    const desc=[
+      block('KONTAKT',[val('#f_name')&&'Name: '+val('#f_name'),val('#f_tel')&&'Telefon: '+val('#f_tel'),val('#f_objekt')&&'Adresse / Objekt: '+val('#f_objekt'),val('#f_tipp')&&'Tippgeber: '+val('#f_tipp')]),
+      block('STAND',['Status: '+val('#f_status')+(amp?'   Ampel: '+amp:''),val('#f_mpe')&&'MPE: '+val('#f_mpe'),val('#f_letzter')&&'Letzter Kontakt: '+fmt(val('#f_letzter'))]),
+      block('AKTUELLE INFO',[val('#f_info')])
+    ].filter(Boolean).join('\n\n');
     const ds=d.replace(/-/g,'');
     const fold=l=>{let o='';while(l.length>60){o+=l.slice(0,60)+'\r\n ';l=l.slice(60)}return o+l};
     const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Eigentuemerliste//DE','CALSCALE:GREGORIAN','BEGIN:VEVENT',
       'UID:'+cur.id+'-'+ds+'@eigentuemerliste','DTSTAMP:'+new Date().toISOString().replace(/[-:]|\.\d{3}/g,''),
-      'DTSTART:'+ds+'T080000','DTEND:'+ds+'T081500','SUMMARY:'+x('Nachfassen: '+name),'DESCRIPTION:'+x(desc),
+      'DTSTART:'+ds+'T080000','DTEND:'+ds+'T081500','SUMMARY:'+x('Nachfassen: '+name),...(val('#f_objekt')?['LOCATION:'+x(val('#f_objekt'))]:[]),'DESCRIPTION:'+x(desc),
       'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+x('Nachfassen: '+name),'TRIGGER:PT0S','END:VALARM','END:VEVENT','END:VCALENDAR'].map(fold).join('\r\n');
     download('nachfassen-'+d+'.ics',ics,'text/calendar');
     toast('Termin erstellt – Datei öffnen und speichern');

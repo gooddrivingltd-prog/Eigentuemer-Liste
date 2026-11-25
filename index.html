@@ -12,6 +12,7 @@
 :root{
   --bg:#17191e; --surface:#21252d; --surface2:#2a2f39; --line:#343a46;
   --text:#ece8e1; --muted:#aaa59a; --accent:#e2a65b; --accent-ink:#1b1608;
+  --red:#ef6f63; --yellow:#f2c94c; --green:#6fcf97;
   --ok:#7fc8a0; --warn:#f0b36a; --bad:#e58a80; --blue:#8db8e8;
   --serif:Georgia,'Times New Roman',serif;
 }
@@ -49,6 +50,20 @@ main{padding:14px 16px 110px;max-width:760px;margin:0 auto}
 .tag.st-Verkauft{color:var(--ok);border-color:#2f5645}
 .tag.st-Erledigt{color:var(--muted)}
 .tag.due{color:var(--bad);border-color:#6a3b36;font-weight:600}
+.card.a-rot{border-left:6px solid var(--red)}
+.card.a-gelb{border-left:6px solid var(--yellow)}
+.card.a-gruen{border-left:6px solid var(--green)}
+.tag.am-rot{color:var(--red);border-color:#6a3b36;font-weight:600}
+.tag.am-gelb{color:var(--yellow);border-color:#5b4a2c}
+.tag.am-gruen{color:var(--green);border-color:#2f5645}
+.amps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.amp-b{background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:12px 6px;cursor:pointer;text-align:center;font-weight:600;line-height:1.2}
+.amp-b i{display:block;width:22px;height:22px;border-radius:50%;margin:0 auto 6px}
+.amp-b small{display:block;font-weight:400;color:var(--muted);font-size:12px;margin-top:3px}
+.amp-b.rot i{background:var(--red)}.amp-b.gelb i{background:var(--yellow)}.amp-b.gruen i{background:var(--green)}
+.amp-b.rot.on{border-color:var(--red)}.amp-b.gelb.on{border-color:var(--yellow)}.amp-b.gruen.on{border-color:var(--green)}
+.amp-b.on{background:var(--surface2)}
+.hint{color:var(--muted);font-size:13px;margin-top:6px;min-height:18px}
 .call{flex:none;width:44px;height:44px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;text-decoration:none;font-size:20px}
 .empty{text-align:center;color:var(--muted);padding:50px 20px}
 .empty b{display:block;font:400 20px var(--serif);color:var(--text);margin-bottom:6px}
@@ -131,7 +146,9 @@ function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'[]');leads=Ar
 function save(){try{localStorage.setItem(KEY,JSON.stringify(leads))}catch(e){toast('Speichern nicht möglich')}}
 function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2600)}
 const open=l=>!['Verkauft','Erledigt'].includes(l.status);
-const isDue=l=>l.faellig&&l.faellig<=today()&&open(l);
+const AMP={rot:{n:'Rot',t:'dringend',e:'🔴'},gelb:{n:'Gelb',t:'on hold, wöchentlich',e:'🟡'},gruen:{n:'Grün',t:'erledigt / Auftrag',e:'🟢'}};
+const addDays=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const isDue=l=>l.ampel!=='gruen'&&open(l)&&(l.ampel==='rot'||(l.faellig&&l.faellig<=today()));
 const title=l=>l.name||l.objekt||'(ohne Name)';
 const telHref=t=>{const d=String(t||'').replace(/[^\d+]/g,'');return d.replace(/\D/g,'').length>=6?'tel:'+d:''};
 
@@ -139,12 +156,13 @@ function filtered(){
   const q=ui.q.trim().toLowerCase();
   let r=leads.filter(l=>{
     if(ui.status==='Fällig'){if(!isDue(l))return false}
+    else if(ui.status.startsWith('amp:')){if(l.ampel!==ui.status.slice(4))return false}
     else if(ui.status!=='Alle'&&l.status!==ui.status)return false;
     if(ui.quelle&&l.quelle!==ui.quelle)return false;
     if(q){const h=[l.nr,l.name,l.tel,l.objekt,l.quelle,l.tippgeber,l.info].join(' ').toLowerCase();if(!q.split(/\s+/).every(w=>h.includes(w)))return false}
     return true});
   const by={
-    faellig:(a,b)=>(a.faellig||'9999').localeCompare(b.faellig||'9999')||title(a).localeCompare(title(b),'de'),
+    faellig:(a,b)=>(a.ampel==='rot'?0:1)-(b.ampel==='rot'?0:1)||(a.faellig||'9999').localeCompare(b.faellig||'9999')||title(a).localeCompare(title(b),'de'),
     name:(a,b)=>title(a).localeCompare(title(b),'de'),
     updated:(a,b)=>(b.updated||0)-(a.updated||0)};
   return r.sort(by[ui.sort]);
@@ -152,11 +170,12 @@ function filtered(){
 function render(){
   const dueN=leads.filter(isDue).length;
   const cnt=s=>leads.filter(l=>l.status===s).length;
-  const names=['Alle','Fällig',...STATUS];
-  $('#chips').innerHTML=names.map(n=>{
-    const c=n==='Alle'?leads.length:n==='Fällig'?dueN:cnt(n);
-    if(!c&&n!==ui.status&&n!=='Alle'&&n!=='Fällig')return '';
-    return `<button class="chip ${ui.status===n?'on':''}" data-s="${n}">${n}<b>${c}</b></button>`}).join('');
+  const defs=[['Alle','Alle',leads.length],['Fällig','Fällig',dueN],
+    ...['rot','gelb','gruen'].map(a=>['amp:'+a,AMP[a].e+' '+AMP[a].n,leads.filter(l=>l.ampel===a).length]),
+    ...STATUS.map(s=>[s,s,cnt(s)])];
+  $('#chips').innerHTML=defs.map(([k,label,c])=>{
+    if(!c&&k!==ui.status&&STATUS.includes(k))return '';
+    return `<button class="chip ${ui.status===k?'on':''}" data-s="${k}">${label}<b>${c}</b></button>`}).join('');
   const qs=[...new Set(leads.map(l=>l.quelle).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'de'));
   $('#quelle').innerHTML='<option value="">Alle Quellen</option>'+qs.map(q=>`<option ${q===ui.quelle?'selected':''}>${esc(q)}</option>`).join('');
   $('#dlQuelle').innerHTML=qs.map(q=>`<option value="${esc(q)}">`).join('');
@@ -168,14 +187,14 @@ function render(){
   if(!r.length){$('#list').innerHTML='<div class="empty"><b>Nichts gefunden</b>Suche oder Filter anpassen.</div>';return}
   $('#list').innerHTML=r.map(l=>{
     const h=telHref(l.tel);
-    return `<div class="card" data-id="${l.id}" role="button" tabindex="0">
+    return `<div class="card a-${l.ampel||'none'}" data-id="${l.id}" role="button" tabindex="0">
       <div class="row"><div style="min-width:0"><h3 class="name">${esc(title(l))}</h3>
         ${l.name&&l.objekt?`<div class="obj">${esc(l.objekt)}</div>`:''}</div>
         ${h?`<a class="call" href="${h}" aria-label="Anrufen" data-call>☎</a>`:''}</div>
       ${l.info?`<div class="info">${esc(l.info)}</div>`:''}
-      <div class="meta"><span class="tag st-${esc(l.status)}">${esc(l.status)}</span>
+      <div class="meta">${l.ampel?`<span class="tag am-${l.ampel}">${AMP[l.ampel].e} ${AMP[l.ampel].t}</span>`:''}<span class="tag st-${esc(l.status)}">${esc(l.status)}</span>
         ${l.quelle?`<span class="tag">${esc(l.quelle)}</span>`:''}
-        ${isDue(l)?`<span class="tag due">fällig ${short(l.faellig)}</span>`:l.faellig&&open(l)?`<span class="tag">Nachfassen ${short(l.faellig)}</span>`:''}
+        ${l.faellig&&isDue(l)?`<span class="tag due">fällig ${short(l.faellig)}</span>`:l.faellig&&open(l)?`<span class="tag">Nachfassen ${short(l.faellig)}</span>`:''}
         ${l.letzter?`<span class="tag">Kontakt ${short(l.letzter)}</span>`:''}</div></div>`}).join('');
 }
 
@@ -183,14 +202,17 @@ function render(){
 let cur=null;
 function openDetail(id){
   const isNew=!id;
-  cur=isNew?{id:uid(),nr:'',name:'',tel:'',objekt:'',quelle:'',ewe:false,fio:false,tippgeber:'',datum:today(),status:'Ausstehend',nachgefasst:'Nein',info:'',letzter:'',faellig:'',updated:0}
-           :{...leads.find(l=>l.id===id)};
+  cur=isNew?{id:uid(),nr:'',name:'',tel:'',objekt:'',quelle:'',ewe:false,fio:false,tippgeber:'',datum:today(),status:'Ausstehend',nachgefasst:'Nein',info:'',letzter:'',faellig:'',ampel:'',updated:0}
+           :{ampel:'',...leads.find(l=>l.id===id)};
   const v=k=>esc(cur[k]);
   const h=telHref(cur.tel);
   $('#detailIn').innerHTML=`
   <div class="sheet-top"><button class="link" id="dBack">‹ Zurück</button>${isNew?'':'<button class="link danger" id="dDel">Löschen</button>'}</div>
   <h2>${isNew?'Neuer Eintrag':esc(title(cur))}</h2>
   ${h?`<div class="actions"><a class="btn primary" href="${h}">☎ Anrufen</a></div>`:''}
+  <label>Ampel</label>
+  <div class="amps" id="amps">${['rot','gelb','gruen'].map(a=>`<button type="button" class="amp-b ${a} ${cur.ampel===a?'on':''}" data-a="${a}"><i></i>${AMP[a].n}<small>${AMP[a].t}</small></button>`).join('')}</div>
+  <div class="hint" id="ampHint"></div>
   <label>Notiz mit Datum anhängen (setzt „Letzter Kontakt“ auf heute)</label>
   <div class="quick"><input class="f" id="quick" placeholder="z. B. nicht erreicht, Mailbox"><button class="btn" id="quickBtn">Hinzufügen</button></div>
   <label>Aktuelle Info</label><textarea class="f" id="f_info">${v('info')}</textarea>
@@ -212,8 +234,17 @@ function openDetail(id){
   $('#dBack').onclick=closeDetail;
   $('#dSave').onclick=()=>{collect();commit();closeDetail();toast('Gespeichert')};
   if(!isNew)$('#dDel').onclick=()=>{if(confirm('„'+title(cur)+'“ wirklich löschen?')){leads=leads.filter(l=>l.id!==cur.id);save();closeDetail();render();toast('Gelöscht')}};
+  $('#amps').onclick=e=>{
+    const b=e.target.closest('.amp-b');if(!b)return;
+    const a=b.dataset.a;cur.ampel=cur.ampel===a?'':a;
+    document.querySelectorAll('.amp-b').forEach(x=>x.classList.toggle('on',x.dataset.a===cur.ampel));
+    const hint={rot:'Dringend: steht in der Liste ganz oben und unter „Fällig“.',gelb:'On hold: Nachfassen am wurde auf in 7 Tage gesetzt, danach jede Woche.',gruen:'Erledigt oder Auftrag: kein Nachfassen mehr nötig.'};
+    $('#ampHint').textContent=cur.ampel?hint[cur.ampel]:'';
+    if(cur.ampel==='gelb')$('#f_faellig').value=addDays(7);
+  };
   $('#quickBtn').onclick=()=>{
     const t=$('#quick').value.trim();if(!t)return;
+    if(cur.ampel==='gelb')$('#f_faellig').value=addDays(7);
     const ta=$('#f_info');ta.value=`${short(today())} ${t}`+(ta.value?'\n'+ta.value:'');
     $('#f_letzter').value=today();$('#quick').value='';
   };
@@ -223,6 +254,7 @@ function collect(){
   Object.assign(cur,{info:$('#f_info').value.trim(),status:g('#f_status'),faellig:g('#f_faellig'),name:g('#f_name'),tel:g('#f_tel'),objekt:g('#f_objekt'),
     quelle:g('#f_quelle'),tippgeber:g('#f_tipp'),nr:g('#f_nr'),nachgefasst:g('#f_nach'),datum:g('#f_datum'),letzter:g('#f_letzter'),
     ewe:$('#f_ewe').checked,fio:$('#f_fio').checked});
+  if(cur.ampel==='gelb'&&!cur.faellig)cur.faellig=addDays(7);
 }
 function commit(){
   cur.updated=Date.now();
@@ -252,9 +284,9 @@ function download(name,text,type){
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),3000)}
 $('#exJson').onclick=()=>{download(`eigentuemerliste-${today()}.json`,JSON.stringify({app:'eigentuemerliste',version:1,leads},null,1),'application/json');toast('Sicherung gespeichert')};
 $('#exCsv').onclick=()=>{
-  const cols=[['nr','Nr.'],['name','Name'],['tel','Telefon'],['objekt','Adresse / Objekt'],['quelle','Quelle'],['ewe','EWE'],['fio','FIO erfasst'],['tippgeber','Tippgeber'],['datum','Datum'],['status','Status'],['nachgefasst','Nachgefasst'],['info','Aktuelle Info'],['letzter','Letzter Kontakt'],['faellig','Nachfassen am']];
+  const cols=[['nr','Nr.'],['name','Name'],['tel','Telefon'],['objekt','Adresse / Objekt'],['quelle','Quelle'],['ewe','EWE'],['fio','FIO erfasst'],['tippgeber','Tippgeber'],['datum','Datum'],['status','Status'],['nachgefasst','Nachgefasst'],['info','Aktuelle Info'],['letzter','Letzter Kontakt'],['faellig','Nachfassen am'],['ampel','Ampel']];
   const cell=v=>'"'+String(typeof v==='boolean'?(v?'Ja':'Nein'):v??'').replace(/"/g,'""')+'"';
-  const csv='﻿'+[cols.map(c=>cell(c[1])).join(';'),...leads.map(l=>cols.map(c=>cell(l[c[0]])).join(';'))].join('\r\n');
+  const csv='﻿'+[cols.map(c=>cell(c[1])).join(';'),...leads.map(l=>cols.map(c=>cell(c[0]==='ampel'?(AMP[l.ampel]?.n||''):l[c[0]])).join(';'))].join('\r\n');
   download(`eigentuemerliste-${today()}.csv`,csv,'text/csv');toast('CSV gespeichert')};
 $('#imJson').onclick=()=>$('#file').click();
 $('#file').addEventListener('change',async e=>{
@@ -262,7 +294,7 @@ $('#file').addEventListener('change',async e=>{
   try{
     const d=JSON.parse(await f.text());const arr=Array.isArray(d)?d:d.leads;
     if(!Array.isArray(arr))throw 0;
-    const inc=arr.filter(x=>x&&typeof x==='object').map(x=>({id:x.id||uid(),nr:'',name:'',tel:'',objekt:'',quelle:'',ewe:false,fio:false,tippgeber:'',datum:'',status:'Ausstehend',nachgefasst:'Nein',info:'',letzter:'',faellig:'',updated:0,...x}));
+    const inc=arr.filter(x=>x&&typeof x==='object').map(x=>({id:x.id||uid(),nr:'',name:'',tel:'',objekt:'',quelle:'',ewe:false,fio:false,tippgeber:'',datum:'',status:'Ausstehend',nachgefasst:'Nein',info:'',letzter:'',faellig:'',ampel:'',updated:0,...x}));
     let replace=true;
     if(leads.length){replace=confirm(`${inc.length} Einträge in der Datei.\n\nOK = bestehende Liste (${leads.length}) ERSETZEN\nAbbrechen = zusammenführen`)}
     if(replace){leads=inc}else{

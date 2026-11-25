@@ -100,7 +100,6 @@ textarea.f{min-height:120px;resize:vertical}
 .menu p{color:var(--muted);font-size:14px;margin:4px 0 14px}
 h2{font:400 22px var(--serif);margin:6px 0 0}
 .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--line);padding:10px 16px;border-radius:12px;z-index:50;display:none;max-width:90%}
-.short .x{display:none}
 .modal{position:fixed;inset:0;background:#000b;z-index:60;display:grid;place-items:center;padding:20px}
 .modal[hidden]{display:none}
 .modal-in{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px;max-width:420px;width:100%}
@@ -156,7 +155,7 @@ h1 small::after{content:'';display:block;width:36px;height:2px;background:var(--
     <button class="btn" id="exCsv">Als CSV (Excel)</button>
   </div>
   <input type="file" id="file" accept=".json,application/json" hidden>
-  <p id="ver" style="margin-top:22px">Version 25.11.2026, 23:40</p>
+  <p id="ver" style="margin-top:22px">Version 25.11.2026, 23:55</p>
   <p>Beim Laden einer Sicherung kannst du wählen: mit der bestehenden Liste zusammenführen oder sie ersetzen.</p>
 </div></div>
 <div class="sheet" id="paste"><div class="sheet-in menu">
@@ -336,13 +335,10 @@ function openDetail(id,preset){
   <select class="f x" id="f_mpe"><option value="">–</option>${MPE.map(s=>`<option ${s===cur.mpe?'selected':''}>${s}</option>`).join('')}</select>
   <h3 class="sec">Herkunft</h3>
   <label>Tippgeber</label><input class="f" id="f_tipp" list="dlTipp" value="${v('tippgeber')}">
-  <div class="x"><label>Nr.</label><input class="f" id="f_nr" value="${v('nr')}"></div>
   <div class="two x" style="margin-top:14px"><label class="toggle" style="margin:0"><input type="checkbox" id="f_ewe" ${cur.ewe?'checked':''}>EWE</label>
   <label class="toggle" style="margin:0"><input type="checkbox" id="f_fio" ${cur.fio?'checked':''}>In FIO erfasst</label></div>
-  ${isNew?'<button type="button" class="btn" id="moreBtn" style="margin-top:16px;width:100%">＋ Alle Felder anzeigen</button>':''}
   <div class="savebar"><button class="btn primary" id="dSave">Speichern</button></div>`;
-  $('#detailIn').classList.toggle('short',isNew);
-  if(isNew)$('#moreBtn').onclick=()=>{$('#detailIn').classList.remove('short');$('#moreBtn').remove()};
+
   $('#detail').classList.add('open');$('#detail').scrollTop=0;
   $('#dBack').onclick=closeDetail;
   $('#dSave').onclick=()=>{collect();commit();closeDetail();toast('Gespeichert')};
@@ -399,7 +395,7 @@ function openDetail(id,preset){
 function collect(){
   const g=i=>$(i).value.trim();
   Object.assign(cur,{mpe:$('#f_mpe').value,info:$('#f_info').value.trim(),status:g('#f_status'),faellig:g('#f_faellig'),name:g('#f_name'),tel:g('#f_tel'),email:g('#f_email'),strasse:g('#f_strasse'),plz:g('#f_plz'),ort:g('#f_ort'),objekt:g('#f_objekt'),
-    tippgeber:g('#f_tipp'),nr:g('#f_nr'),nachgefasst:g('#f_nach'),datum:g('#f_datum'),letzter:g('#f_letzter'),
+    tippgeber:g('#f_tipp'),nachgefasst:g('#f_nach'),datum:g('#f_datum'),letzter:g('#f_letzter'),
     ewe:$('#f_ewe').checked,fio:$('#f_fio').checked});
   if(cur.strasse&&(cur.plz||cur.ort))cur.adresse='';
   if(cur.ampel==='gelb'&&(!cur.faellig||cur.faellig<=today()))cur.faellig=nextMonday();

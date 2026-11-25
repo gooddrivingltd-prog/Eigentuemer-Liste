@@ -135,7 +135,10 @@ h2{font:400 22px var(--serif);margin:6px 0 0}
 const KEY='eigentuemerliste.v1';
 const STATUS=['Ausstehend','Auftrag','Verkauft','Erledigt'];
 const MPE=['Zu erledigen','Erledigt','Nicht notwendig'];
-function migrate(l){if(l.status==='MPE'){l.status='Ausstehend';if(!l.mpe)l.mpe='Zu erledigen'}if(l.mpe===undefined)l.mpe='';return l}
+function migrate(l){
+  if(l.status==='MPE'){l.status='Ausstehend';if(!l.mpe)l.mpe='Zu erledigen'}
+  if(l.nachgefasst==='MPE'){l.nachgefasst='Nein';if(!l.mpe)l.mpe='Zu erledigen'}
+  if(l.mpe===undefined)l.mpe='';return l}
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>crypto.randomUUID?crypto.randomUUID():'id'+Date.now()+Math.random().toString(16).slice(2);
@@ -145,7 +148,7 @@ const short=iso=>iso?iso.slice(8,10)+'.'+iso.slice(5,7)+'.':'';
 
 let leads=[]; const ui={q:'',status:'Alle',quelle:'',sort:'faellig'};
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'[]');leads=Array.isArray(d)?d:[]}catch(e){leads=[]}
-  if(leads.some(l=>l.status==='MPE'||l.mpe===undefined)){leads.forEach(migrate);save()}}
+  if(leads.some(l=>l.status==='MPE'||l.nachgefasst==='MPE'||l.mpe===undefined)){leads.forEach(migrate);save()}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(leads))}catch(e){toast('Speichern nicht möglich')}}
 function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2600)}
 const open=l=>!['Verkauft','Erledigt'].includes(l.status);
@@ -229,7 +232,7 @@ function openDetail(id){
   <div class="two"><div><label>Quelle</label><input class="f" id="f_quelle" list="dlQuelle" value="${v('quelle')}"></div>
   <div><label>Tippgeber</label><input class="f" id="f_tipp" list="dlTipp" value="${v('tippgeber')}"></div></div>
   <div class="two"><div><label>Nr.</label><input class="f" id="f_nr" value="${v('nr')}"></div>
-  <div><label>Nachgefasst</label><select class="f" id="f_nach">${['Nein','Ja','MPE'].map(s=>`<option ${s===cur.nachgefasst?'selected':''}>${s}</option>`).join('')}</select></div></div>
+  <div><label>Nachgefasst</label><select class="f" id="f_nach">${['Nein','Ja'].map(s=>`<option ${s===cur.nachgefasst?'selected':''}>${s}</option>`).join('')}</select></div></div>
   <div class="two"><div><label>Datum (Eingang)</label><input class="f" type="date" id="f_datum" value="${v('datum')}"></div>
   <div><label>Letzter Kontakt</label><input class="f" type="date" id="f_letzter" value="${v('letzter')}"></div></div>
   <div class="two" style="margin-top:14px"><label class="toggle" style="margin:0"><input type="checkbox" id="f_ewe" ${cur.ewe?'checked':''}>EWE</label>

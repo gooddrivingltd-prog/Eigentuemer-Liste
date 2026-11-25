@@ -136,7 +136,6 @@ h2{font:400 22px var(--serif);margin:6px 0 0}
 </div></div>
 <div class="toast" id="toast"></div>
 
-<datalist id="dlQuelle"></datalist>
 <datalist id="dlTipp"></datalist>
 
 <script>
@@ -146,6 +145,7 @@ const MPE=['Zu erledigen','Erledigt','Nicht notwendig'];
 function migrate(l){
   if(l.status==='MPE'){l.status='Ausstehend';if(!l.mpe)l.mpe='Zu erledigen'}
   if(l.nachgefasst==='MPE'){l.nachgefasst='Nein';if(!l.mpe)l.mpe='Zu erledigen'}
+  if(l.quelle!==undefined){if(!l.tippgeber)l.tippgeber=l.quelle;delete l.quelle}
   if(l.mpe===undefined)l.mpe='';return l}
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -156,7 +156,7 @@ const short=iso=>iso?iso.slice(8,10)+'.'+iso.slice(5,7)+'.':'';
 
 let leads=[]; const ui={q:'',status:'Alle',quelle:'',sort:'faellig'};
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'[]');leads=Array.isArray(d)?d:[]}catch(e){leads=[]}
-  if(leads.some(l=>l.status==='MPE'||l.nachgefasst==='MPE'||l.mpe===undefined)){leads.forEach(migrate);save()}}
+  if(leads.some(l=>l.status==='MPE'||l.nachgefasst==='MPE'||l.mpe===undefined||l.quelle!==undefined)){leads.forEach(migrate);save()}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(leads))}catch(e){toast('Speichern nicht möglich')}}
 function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2600)}
 const open=l=>!['Verkauft','Erledigt'].includes(l.status);
@@ -174,8 +174,8 @@ function filtered(){
     if(ui.status==='Fällig'){if(!isDue(l))return false}
     else if(ui.status.startsWith('amp:')){if(l.ampel!==ui.status.slice(4))return false}
     else if(ui.status!=='Alle'&&l.status!==ui.status)return false;
-    if(ui.quelle&&l.quelle!==ui.quelle)return false;
-    if(q){const h=[l.nr,l.name,l.tel,l.objekt,l.quelle,l.tippgeber,l.info].join(' ').toLowerCase();if(!q.split(/\s+/).every(w=>h.includes(w)))return false}
+    if(ui.quelle&&l.tippgeber!==ui.quelle)return false;
+    if(q){const h=[l.nr,l.name,l.tel,l.objekt,l.tippgeber,l.info].join(' ').toLowerCase();if(!q.split(/\s+/).every(w=>h.includes(w)))return false}
     return true});
   const by={
     faellig:(a,b)=>(a.ampel==='rot'?0:1)-(b.ampel==='rot'?0:1)||(a.faellig||'9999').localeCompare(b.faellig||'9999')||title(a).localeCompare(title(b),'de'),
@@ -192,9 +192,8 @@ function render(keep){
   $('#chips').innerHTML=defs.map(([k,label,c])=>{
     if(!c&&k!==ui.status&&STATUS.includes(k))return '';
     return `<button class="chip ${ui.status===k?'on':''}" data-s="${k}">${label}<b>${c}</b></button>`}).join('');
-  const qs=[...new Set(leads.map(l=>l.quelle).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'de'));
-  $('#quelle').innerHTML='<option value="">Alle Quellen</option>'+qs.map(q=>`<option ${q===ui.quelle?'selected':''}>${esc(q)}</option>`).join('');
-  $('#dlQuelle').innerHTML=qs.map(q=>`<option value="${esc(q)}">`).join('');
+  const qs=[...new Set(leads.map(l=>l.tippgeber).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'de'));
+  $('#quelle').innerHTML='<option value="">Alle Tippgeber</option>'+qs.map(q=>`<option ${q===ui.quelle?'selected':''}>${esc(q)}</option>`).join('');
   $('#dlTipp').innerHTML=[...new Set(leads.map(l=>l.tippgeber).filter(Boolean))].map(q=>`<option value="${esc(q)}">`).join('');
   $('#sub').textContent=leads.length?`${leads.length} Einträge${dueN?` · ${dueN} fällig`:''}`:'noch leer';
   const redN=leads.filter(l=>isDue(l)&&l.ampel==='rot').length;
@@ -215,7 +214,7 @@ function cardHtml(l){
         ${h?`<a class="call" href="${h}" aria-label="Anrufen" data-call>☎</a>`:''}</div>
       ${l.info?`<div class="info">${esc(l.info)}</div>`:''}
       <div class="meta">${l.ampel?`<span class="tag am-${l.ampel}">${AMP[l.ampel].e} ${AMP[l.ampel].t}</span>`:''}<span class="tag st-${esc(l.status)}">${esc(l.status)}</span>${l.mpe?`<span class="tag st-${l.mpe==='Erledigt'?'Auftrag':l.mpe==='Zu erledigen'?'MPE':'Erledigt'}">MPE: ${esc(l.mpe)}</span>`:''}
-        ${l.quelle?`<span class="tag">${esc(l.quelle)}</span>`:''}
+        ${l.tippgeber?`<span class="tag">${esc(l.tippgeber)}</span>`:''}
         ${l.faellig&&isDue(l)?`<span class="tag due">fällig ${short(l.faellig)}</span>`:l.faellig&&open(l)?`<span class="tag">Nachfassen ${short(l.faellig)}</span>`:''}
         ${l.letzter?`<span class="tag">Kontakt ${short(l.letzter)}</span>`:''}${dotsHtml(l)}</div></div>`;
 }
@@ -232,7 +231,7 @@ function quickAmpel(id,a){
 let cur=null;
 function openDetail(id){
   const isNew=!id;
-  cur=isNew?{id:uid(),nr:'',name:'',tel:'',objekt:'',quelle:'',ewe:false,fio:false,tippgeber:'',datum:today(),status:'Ausstehend',nachgefasst:'Nein',info:'',letzter:'',faellig:'',ampel:'',mpe:'',updated:0}
+  cur=isNew?{id:uid(),nr:'',name:'',tel:'',objekt:'',ewe:false,fio:false,tippgeber:'',datum:today(),status:'Ausstehend',nachgefasst:'Nein',info:'',letzter:'',faellig:'',ampel:'',mpe:'',updated:0}
            :{ampel:'',mpe:'',...leads.find(l=>l.id===id)};
   const v=k=>esc(cur[k]);
   const h=telHref(cur.tel);
@@ -248,13 +247,13 @@ function openDetail(id){
   <label>Aktuelle Info</label><textarea class="f" id="f_info">${v('info')}</textarea>
   <div class="two"><div><label>Status</label><select class="f" id="f_status">${STATUS.map(s=>`<option ${s===cur.status?'selected':''}>${s}</option>`).join('')}</select></div>
   <div><label>Nachfassen am</label><input class="f" type="date" id="f_faellig" value="${v('faellig')}"></div></div>
+  <button type="button" class="btn" id="calBtn" style="margin-top:10px;width:100%">📅 In Kalender eintragen</button>
   <label>MPE (Marktpreiseinschätzung)</label>
   <select class="f" id="f_mpe"><option value="">–</option>${MPE.map(s=>`<option ${s===cur.mpe?'selected':''}>${s}</option>`).join('')}</select>
   <label>Name</label><input class="f" id="f_name" value="${v('name')}">
   <label>Telefon</label><input class="f" id="f_tel" inputmode="tel" value="${v('tel')}">
   <label>Adresse / Objekt</label><input class="f" id="f_objekt" value="${v('objekt')}">
-  <div class="two"><div><label>Quelle</label><input class="f" id="f_quelle" list="dlQuelle" value="${v('quelle')}"></div>
-  <div><label>Tippgeber</label><input class="f" id="f_tipp" list="dlTipp" value="${v('tippgeber')}"></div></div>
+  <label>Tippgeber</label><input class="f" id="f_tipp" list="dlTipp" value="${v('tippgeber')}">
   <div class="two"><div><label>Nr.</label><input class="f" id="f_nr" value="${v('nr')}"></div>
   <div><label>Nachgefasst</label><select class="f" id="f_nach">${['Nein','Ja'].map(s=>`<option ${s===cur.nachgefasst?'selected':''}>${s}</option>`).join('')}</select></div></div>
   <div class="two"><div><label>Datum (Eingang)</label><input class="f" type="date" id="f_datum" value="${v('datum')}"></div>
@@ -266,6 +265,21 @@ function openDetail(id){
   $('#dBack').onclick=closeDetail;
   $('#dSave').onclick=()=>{collect();commit();closeDetail();toast('Gespeichert')};
   if(!isNew)$('#dDel').onclick=()=>{if(confirm('„'+title(cur)+'“ wirklich löschen?')){leads=leads.filter(l=>l.id!==cur.id);save();closeDetail();render();toast('Gelöscht')}};
+  $('#calBtn').onclick=()=>{
+    const d=$('#f_faellig').value;
+    if(!d){toast('Erst „Nachfassen am“ eintragen');return}
+    const name=$('#f_name').value.trim()||$('#f_objekt').value.trim()||'Kontakt';
+    const x=s=>String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n');
+    const desc=[$('#f_tel').value.trim()&&'Tel: '+$('#f_tel').value.trim(),$('#f_objekt').value.trim(),$('#f_info').value.trim().split('\n')[0]].filter(Boolean).join(' | ');
+    const ds=d.replace(/-/g,'');
+    const fold=l=>{let o='';while(l.length>60){o+=l.slice(0,60)+'\r\n ';l=l.slice(60)}return o+l};
+    const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Eigentuemerliste//DE','CALSCALE:GREGORIAN','BEGIN:VEVENT',
+      'UID:'+cur.id+'-'+ds+'@eigentuemerliste','DTSTAMP:'+new Date().toISOString().replace(/[-:]|\.\d{3}/g,''),
+      'DTSTART:'+ds+'T080000','DTEND:'+ds+'T081500','SUMMARY:'+x('Nachfassen: '+name),'DESCRIPTION:'+x(desc),
+      'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+x('Nachfassen: '+name),'TRIGGER:PT0S','END:VALARM','END:VEVENT','END:VCALENDAR'].map(fold).join('\r\n');
+    download('nachfassen-'+d+'.ics',ics,'text/calendar');
+    toast('Termin erstellt – Datei öffnen und speichern');
+  };
   $('#amps').onclick=e=>{
     const b=e.target.closest('.amp-b');if(!b)return;
     const a=b.dataset.a;cur.ampel=cur.ampel===a?'':a;
@@ -284,7 +298,7 @@ function openDetail(id){
 function collect(){
   const g=i=>$(i).value.trim();
   Object.assign(cur,{mpe:$('#f_mpe').value,info:$('#f_info').value.trim(),status:g('#f_status'),faellig:g('#f_faellig'),name:g('#f_name'),tel:g('#f_tel'),objekt:g('#f_objekt'),
-    quelle:g('#f_quelle'),tippgeber:g('#f_tipp'),nr:g('#f_nr'),nachgefasst:g('#f_nach'),datum:g('#f_datum'),letzter:g('#f_letzter'),
+    tippgeber:g('#f_tipp'),nr:g('#f_nr'),nachgefasst:g('#f_nach'),datum:g('#f_datum'),letzter:g('#f_letzter'),
     ewe:$('#f_ewe').checked,fio:$('#f_fio').checked});
   if(cur.ampel==='gelb'&&!cur.faellig)cur.faellig=nextMonday();
 }
@@ -319,7 +333,7 @@ function download(name,text,type){
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),3000)}
 $('#exJson').onclick=()=>{download(`eigentuemerliste-${today()}.json`,JSON.stringify({app:'eigentuemerliste',version:1,leads},null,1),'application/json');toast('Sicherung gespeichert')};
 $('#exCsv').onclick=()=>{
-  const cols=[['nr','Nr.'],['name','Name'],['tel','Telefon'],['objekt','Adresse / Objekt'],['quelle','Quelle'],['ewe','EWE'],['fio','FIO erfasst'],['tippgeber','Tippgeber'],['datum','Datum'],['status','Status'],['mpe','MPE'],['nachgefasst','Nachgefasst'],['info','Aktuelle Info'],['letzter','Letzter Kontakt'],['faellig','Nachfassen am'],['ampel','Ampel']];
+  const cols=[['nr','Nr.'],['name','Name'],['tel','Telefon'],['objekt','Adresse / Objekt'],['ewe','EWE'],['fio','FIO erfasst'],['tippgeber','Tippgeber'],['datum','Datum'],['status','Status'],['mpe','MPE'],['nachgefasst','Nachgefasst'],['info','Aktuelle Info'],['letzter','Letzter Kontakt'],['faellig','Nachfassen am'],['ampel','Ampel']];
   const cell=v=>'"'+String(typeof v==='boolean'?(v?'Ja':'Nein'):v??'').replace(/"/g,'""')+'"';
   const csv='﻿'+[cols.map(c=>cell(c[1])).join(';'),...leads.map(l=>cols.map(c=>cell(c[0]==='ampel'?(AMP[l.ampel]?.n||''):l[c[0]])).join(';'))].join('\r\n');
   download(`eigentuemerliste-${today()}.csv`,csv,'text/csv');toast('CSV gespeichert')};
@@ -329,7 +343,7 @@ $('#file').addEventListener('change',async e=>{
   try{
     const d=JSON.parse(await f.text());const arr=Array.isArray(d)?d:d.leads;
     if(!Array.isArray(arr))throw 0;
-    const inc=arr.filter(x=>x&&typeof x==='object').map(x=>({id:x.id||uid(),nr:'',name:'',tel:'',objekt:'',quelle:'',ewe:false,fio:false,tippgeber:'',datum:'',status:'Ausstehend',nachgefasst:'Nein',info:'',letzter:'',faellig:'',ampel:'',mpe:'',updated:0,...x})).map(migrate);
+    const inc=arr.filter(x=>x&&typeof x==='object').map(x=>({id:x.id||uid(),nr:'',name:'',tel:'',objekt:'',ewe:false,fio:false,tippgeber:'',datum:'',status:'Ausstehend',nachgefasst:'Nein',info:'',letzter:'',faellig:'',ampel:'',mpe:'',updated:0,...x})).map(migrate);
     let replace=true;
     if(leads.length){replace=confirm(`${inc.length} Einträge in der Datei.\n\nOK = bestehende Liste (${leads.length}) ERSETZEN\nAbbrechen = zusammenführen`)}
     if(replace){leads=inc}else{

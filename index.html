@@ -64,6 +64,11 @@ main{padding:14px 16px 110px;max-width:760px;margin:0 auto}
 .amp-b.rot.on{border-color:var(--red)}.amp-b.gelb.on{border-color:var(--yellow)}.amp-b.gruen.on{border-color:var(--green)}
 .amp-b.on{background:var(--surface2)}
 .hint{color:var(--muted);font-size:13px;margin-top:6px;min-height:18px}
+.dots{margin-left:auto;display:flex;gap:2px;flex:none}
+.dot{width:42px;height:42px;background:none;border:none;padding:0;cursor:pointer;position:relative;margin:-6px 0}
+.dot::after{content:'';position:absolute;inset:7px;border-radius:50%;border:2.5px solid var(--c);background:transparent}
+.dot.on::after{background:var(--c)}
+.dot.rot{--c:var(--red)}.dot.gelb{--c:var(--yellow)}.dot.gruen{--c:var(--green)}
 .call{flex:none;width:44px;height:44px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;text-decoration:none;font-size:20px}
 .empty{text-align:center;color:var(--muted);padding:50px 20px}
 .empty b{display:block;font:400 20px var(--serif);color:var(--text);margin-bottom:6px}
@@ -153,6 +158,7 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(leads))}catch(e){toa
 function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2600)}
 const open=l=>!['Verkauft','Erledigt'].includes(l.status);
 const AMP={rot:{n:'Rot',t:'dringend',e:'🔴'},gelb:{n:'Gelb',t:'on hold, wöchentlich',e:'🟡'},gruen:{n:'Grün',t:'erledigt / Auftrag',e:'🟢'}};
+const dotsHtml=l=>`<span class="dots">${['rot','gelb','gruen'].map(a=>`<button type="button" class="dot ${a} ${l.ampel===a?'on':''}" data-amp="${a}" aria-label="${AMP[a].n}: ${AMP[a].t}"></button>`).join('')}</span>`;
 const addDays=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const isDue=l=>l.ampel!=='gruen'&&open(l)&&(l.ampel==='rot'||(l.faellig&&l.faellig<=today()));
 const title=l=>l.name||l.objekt||'(ohne Name)';
@@ -173,7 +179,7 @@ function filtered(){
     updated:(a,b)=>(b.updated||0)-(a.updated||0)};
   return r.sort(by[ui.sort]);
 }
-function render(){
+function render(keep){
   const dueN=leads.filter(isDue).length;
   const cnt=s=>leads.filter(l=>l.status===s).length;
   const defs=[['Alle','Alle',leads.length],
@@ -187,11 +193,14 @@ function render(){
   $('#dlQuelle').innerHTML=qs.map(q=>`<option value="${esc(q)}">`).join('');
   $('#dlTipp').innerHTML=[...new Set(leads.map(l=>l.tippgeber).filter(Boolean))].map(q=>`<option value="${esc(q)}">`).join('');
   $('#sub').textContent=leads.length?`${leads.length} Einträge${dueN?` · ${dueN} fällig`:''}`:'noch leer';
+  if(keep)return;
   const r=filtered();
   $('#count').textContent=leads.length?`${r.length} angezeigt`:'';
   if(!leads.length){$('#list').innerHTML='<div class="empty"><b>Noch keine Einträge</b>Mit + einen anlegen oder im Menü (☰) eine Sicherung laden.</div>';return}
   if(!r.length){$('#list').innerHTML='<div class="empty"><b>Nichts gefunden</b>Suche oder Filter anpassen.</div>';return}
-  $('#list').innerHTML=r.map(l=>{
+  $('#list').innerHTML=r.map(cardHtml).join('');
+}
+function cardHtml(l){
     const h=telHref(l.tel);
     return `<div class="card a-${l.ampel||'none'}" data-id="${l.id}" role="button" tabindex="0">
       <div class="row"><div style="min-width:0"><h3 class="name">${esc(title(l))}</h3>
@@ -201,7 +210,15 @@ function render(){
       <div class="meta">${l.ampel?`<span class="tag am-${l.ampel}">${AMP[l.ampel].e} ${AMP[l.ampel].t}</span>`:''}<span class="tag st-${esc(l.status)}">${esc(l.status)}</span>${l.mpe?`<span class="tag st-${l.mpe==='Erledigt'?'Auftrag':l.mpe==='Zu erledigen'?'MPE':'Erledigt'}">MPE: ${esc(l.mpe)}</span>`:''}
         ${l.quelle?`<span class="tag">${esc(l.quelle)}</span>`:''}
         ${l.faellig&&isDue(l)?`<span class="tag due">fällig ${short(l.faellig)}</span>`:l.faellig&&open(l)?`<span class="tag">Nachfassen ${short(l.faellig)}</span>`:''}
-        ${l.letzter?`<span class="tag">Kontakt ${short(l.letzter)}</span>`:''}</div></div>`}).join('');
+        ${l.letzter?`<span class="tag">Kontakt ${short(l.letzter)}</span>`:''}${dotsHtml(l)}</div></div>`;
+}
+function quickAmpel(id,a){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  l.ampel=l.ampel===a?'':a;
+  if(l.ampel==='gelb')l.faellig=addDays(7);
+  l.updated=Date.now();save();
+  const el=document.querySelector(`.card[data-id="${id}"]`);if(el)el.outerHTML=cardHtml(l);
+  render(true);
 }
 
 /* Detail */
@@ -274,6 +291,8 @@ function closeDetail(){$('#detail').classList.remove('open');cur=null}
 
 /* Events */
 $('#list').addEventListener('click',e=>{
+  const d=e.target.closest('.dot');
+  if(d){quickAmpel(d.closest('.card').dataset.id,d.dataset.amp);return}
   if(e.target.closest('[data-call]'))return;
   const c=e.target.closest('.card');if(c)openDetail(c.dataset.id)});
 $('#list').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.classList.contains('card'))openDetail(e.target.dataset.id)});

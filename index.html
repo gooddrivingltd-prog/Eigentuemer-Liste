@@ -148,6 +148,8 @@ h2,h3,.sec{font-family:var(--sans)}
       <option value="faellig">Fällig zuerst</option>
       <option value="name">Name A–Z</option>
       <option value="updated">Zuletzt bearbeitet</option>
+      <option value="reihe">Eingang: älteste zuerst</option>
+      <option value="neu">Eingang: neueste zuerst</option>
     </select>
   </div>
 </header>
@@ -166,7 +168,7 @@ h2,h3,.sec{font-family:var(--sans)}
     <button class="btn" id="exCsv">Als CSV (Excel)</button>
   </div>
   <input type="file" id="file" accept=".json,application/json" hidden>
-  <p id="ver" style="margin-top:22px">Version 26.11.2026, 01:00</p>
+  <p id="ver" style="margin-top:22px">Version 26.11.2026, 01:15</p>
   <p>Beim Laden einer Sicherung kannst du wählen: mit der bestehenden Liste zusammenführen oder sie ersetzen.</p>
 </div></div>
 <div class="sheet" id="paste"><div class="sheet-in menu">
@@ -260,8 +262,11 @@ function filtered(){
   const by={
     faellig:(a,b)=>(a.ampel==='rot'?0:1)-(b.ampel==='rot'?0:1)||(a.faellig||'9999').localeCompare(b.faellig||'9999')||title(a).localeCompare(title(b),'de'),
     name:(a,b)=>title(a).localeCompare(title(b),'de'),
-    updated:(a,b)=>(b.updated||0)-(a.updated||0)};
-  return r.sort(by[ui.sort]);
+    updated:(a,b)=>(b.updated||0)-(a.updated||0),
+    reihe:()=>0,neu:()=>0};
+  r.sort(by[ui.sort]);
+  if(ui.sort==='neu')r.reverse();
+  return r;
 }
 function render(keep){
   const dueN=leads.filter(isDue).length;
@@ -418,7 +423,7 @@ function collect(){
 function commit(){
   cur.updated=Date.now();
   const i=leads.findIndex(l=>l.id===cur.id);
-  if(i<0)leads.unshift(cur);else leads[i]=cur;
+  if(i<0)leads.push(cur);else leads[i]=cur;
   save();render();
 }
 function closeDetail(){$('#detail').classList.remove('open');cur=null;selId=null;$('#detailIn').innerHTML='';document.querySelectorAll('.card.sel').forEach(c=>c.classList.remove('sel'))}

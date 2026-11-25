@@ -64,6 +64,9 @@ main{padding:14px 16px 110px;max-width:760px;margin:0 auto}
 .amp-b.rot.on{border-color:var(--red)}.amp-b.gelb.on{border-color:var(--yellow)}.amp-b.gruen.on{border-color:var(--green)}
 .amp-b.on{background:var(--surface2)}
 .hint{color:var(--muted);font-size:13px;margin-top:6px;min-height:18px}
+.banner{display:flex;justify-content:space-between;align-items:center;width:100%;background:var(--surface2);border:1px solid var(--line);border-left:6px solid var(--accent);border-radius:14px;padding:12px 14px;margin-bottom:12px;cursor:pointer;text-align:left}
+.banner[hidden]{display:none}
+.banner span{color:var(--accent);font-size:14px}
 .dots{margin-left:auto;display:flex;gap:2px;flex:none}
 .dot{width:42px;height:42px;background:none;border:none;padding:0;cursor:pointer;position:relative;margin:-6px 0}
 .dot::after{content:'';position:absolute;inset:7px;border-radius:50%;border:2.5px solid var(--c);background:transparent}
@@ -115,7 +118,7 @@ h2{font:400 22px var(--serif);margin:6px 0 0}
     </select>
   </div>
 </header>
-<main><div class="count" id="count"></div><div id="list"></div></main>
+<main><button class="banner" id="banner" hidden></button><div class="count" id="count"></div><div id="list"></div></main>
 <button class="fab" id="add" aria-label="Neuer Eintrag">+</button>
 
 <div class="sheet" id="detail"><div class="sheet-in" id="detailIn"></div></div>
@@ -160,6 +163,7 @@ const open=l=>!['Verkauft','Erledigt'].includes(l.status);
 const AMP={rot:{n:'Rot',t:'dringend',e:'🔴'},gelb:{n:'Gelb',t:'on hold, wöchentlich',e:'🟡'},gruen:{n:'Grün',t:'erledigt / Auftrag',e:'🟢'}};
 const dotsHtml=l=>`<span class="dots">${['rot','gelb','gruen'].map(a=>`<button type="button" class="dot ${a} ${l.ampel===a?'on':''}" data-amp="${a}" aria-label="${AMP[a].n}: ${AMP[a].t}"></button>`).join('')}</span>`;
 const addDays=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const nextMonday=()=>addDays((8-new Date().getDay())%7||7);
 const isDue=l=>l.ampel!=='gruen'&&open(l)&&(l.ampel==='rot'||(l.faellig&&l.faellig<=today()));
 const title=l=>l.name||l.objekt||'(ohne Name)';
 const telHref=t=>{const d=String(t||'').replace(/[^\d+]/g,'');return d.replace(/\D/g,'').length>=6?'tel:'+d:''};
@@ -193,6 +197,9 @@ function render(keep){
   $('#dlQuelle').innerHTML=qs.map(q=>`<option value="${esc(q)}">`).join('');
   $('#dlTipp').innerHTML=[...new Set(leads.map(l=>l.tippgeber).filter(Boolean))].map(q=>`<option value="${esc(q)}">`).join('');
   $('#sub').textContent=leads.length?`${leads.length} Einträge${dueN?` · ${dueN} fällig`:''}`:'noch leer';
+  const redN=leads.filter(l=>isDue(l)&&l.ampel==='rot').length;
+  const bn=$('#banner');bn.hidden=!dueN;
+  bn.innerHTML=`<b>${dueN} fällig</b>${redN?` · davon ${redN} rot`:''}<span>anzeigen ›</span>`;
   if(keep)return;
   const r=filtered();
   $('#count').textContent=leads.length?`${r.length} angezeigt`:'';
@@ -215,7 +222,7 @@ function cardHtml(l){
 function quickAmpel(id,a){
   const l=leads.find(x=>x.id===id);if(!l)return;
   l.ampel=l.ampel===a?'':a;
-  if(l.ampel==='gelb')l.faellig=addDays(7);
+  if(l.ampel==='gelb')l.faellig=nextMonday();
   l.updated=Date.now();save();
   const el=document.querySelector(`.card[data-id="${id}"]`);if(el)el.outerHTML=cardHtml(l);
   render(true);
@@ -263,13 +270,13 @@ function openDetail(id){
     const b=e.target.closest('.amp-b');if(!b)return;
     const a=b.dataset.a;cur.ampel=cur.ampel===a?'':a;
     document.querySelectorAll('.amp-b').forEach(x=>x.classList.toggle('on',x.dataset.a===cur.ampel));
-    const hint={rot:'Dringend: steht in der Liste ganz oben und unter „Fällig“.',gelb:'On hold: Nachfassen am wurde auf in 7 Tage gesetzt, danach jede Woche.',gruen:'Erledigt oder Auftrag: kein Nachfassen mehr nötig.'};
+    const hint={rot:'Dringend: steht in der Liste ganz oben und unter „Fällig“.',gelb:'On hold: Nachfassen am steht auf dem nächsten Montag, danach jede Woche.',gruen:'Erledigt oder Auftrag: kein Nachfassen mehr nötig.'};
     $('#ampHint').textContent=cur.ampel?hint[cur.ampel]:'';
-    if(cur.ampel==='gelb')$('#f_faellig').value=addDays(7);
+    if(cur.ampel==='gelb')$('#f_faellig').value=nextMonday();
   };
   $('#quickBtn').onclick=()=>{
     const t=$('#quick').value.trim();if(!t)return;
-    if(cur.ampel==='gelb')$('#f_faellig').value=addDays(7);
+    if(cur.ampel==='gelb')$('#f_faellig').value=nextMonday();
     const ta=$('#f_info');ta.value=`${short(today())} ${t}`+(ta.value?'\n'+ta.value:'');
     $('#f_letzter').value=today();$('#quick').value='';
   };
@@ -279,7 +286,7 @@ function collect(){
   Object.assign(cur,{mpe:$('#f_mpe').value,info:$('#f_info').value.trim(),status:g('#f_status'),faellig:g('#f_faellig'),name:g('#f_name'),tel:g('#f_tel'),objekt:g('#f_objekt'),
     quelle:g('#f_quelle'),tippgeber:g('#f_tipp'),nr:g('#f_nr'),nachgefasst:g('#f_nach'),datum:g('#f_datum'),letzter:g('#f_letzter'),
     ewe:$('#f_ewe').checked,fio:$('#f_fio').checked});
-  if(cur.ampel==='gelb'&&!cur.faellig)cur.faellig=addDays(7);
+  if(cur.ampel==='gelb'&&!cur.faellig)cur.faellig=nextMonday();
 }
 function commit(){
   cur.updated=Date.now();
@@ -300,6 +307,7 @@ $('#chips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(b)
 $('#q').addEventListener('input',e=>{ui.q=e.target.value;render()});
 $('#quelle').addEventListener('change',e=>{ui.quelle=e.target.value;render()});
 $('#sort').addEventListener('change',e=>{ui.sort=e.target.value;render()});
+$('#banner').onclick=()=>{ui.status='Fällig';render();window.scrollTo(0,0)};
 $('#add').onclick=()=>openDetail(null);
 $('#menuBtn').onclick=()=>$('#menu').classList.add('open');
 $('#menuClose').onclick=()=>$('#menu').classList.remove('open');

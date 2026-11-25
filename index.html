@@ -112,20 +112,9 @@ h1 small::after{content:'';display:block;width:36px;height:2px;background:var(--
 .chips{flex-wrap:wrap;justify-content:center;overflow:visible}
 .bar{max-width:420px;margin:12px auto 0}
 .count{text-align:center}
-@media(min-width:1000px){
-  body{display:grid;grid-template-columns:480px 1fr;grid-template-rows:auto 1fr;align-items:start;height:100vh;overflow:hidden}
-  header{grid-column:1;grid-row:1;position:relative}
-  main{grid-column:1;grid-row:2;max-width:none;margin:0;padding:14px 16px 100px;height:100%;overflow-y:auto;scrollbar-width:thin}
-  #detail{display:block;position:static;grid-column:2;grid-row:1/span 2;height:100vh;border-left:1px solid var(--line);overflow-y:auto;background:var(--bg)}
-  .sheet-in{max-width:820px;padding:24px 32px 0}
-  #detailIn:empty::before{content:'Kontakt links auswählen oder mit + einen neuen anlegen';display:block;text-align:center;color:var(--muted);font:400 20px var(--serif);padding-top:32vh}
-  .savebar{position:sticky;bottom:0;left:auto;right:auto;margin:24px -32px 0;padding:18px 32px 20px;background:linear-gradient(transparent,var(--bg) 30%)}
-  .savebar .btn{max-width:none}
-  .fab{right:auto;left:400px;bottom:24px}
-  .toast{left:calc(480px + 50%);bottom:24px}
-  .two{gap:14px}
-  .card:hover{background:var(--surface2)}
-}
+.top,.chips{max-width:760px;margin-left:auto;margin-right:auto}
+.card:hover{background:var(--surface2)}
+.sheet-in{max-width:820px}
 </style>
 </head>
 <body>
@@ -159,7 +148,7 @@ h1 small::after{content:'';display:block;width:36px;height:2px;background:var(--
     <button class="btn" id="exCsv">Als CSV (Excel)</button>
   </div>
   <input type="file" id="file" accept=".json,application/json" hidden>
-  <p id="ver" style="margin-top:22px">Version 25.11.2026, 21:35</p>
+  <p id="ver" style="margin-top:22px">Version 25.11.2026, 21:45</p>
   <p>Beim Laden einer Sicherung kannst du wählen: mit der bestehenden Liste zusammenführen oder sie ersetzen.</p>
 </div></div>
 <div class="toast" id="toast"></div>

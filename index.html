@@ -148,7 +148,7 @@ h1 small::after{content:'';display:block;width:36px;height:2px;background:var(--
     <button class="btn" id="exCsv">Als CSV (Excel)</button>
   </div>
   <input type="file" id="file" accept=".json,application/json" hidden>
-  <p id="ver" style="margin-top:22px">Version 25.11.2026, 21:45</p>
+  <p id="ver" style="margin-top:22px">Version 25.11.2026, 22:00</p>
   <p>Beim Laden einer Sicherung kannst du wählen: mit der bestehenden Liste zusammenführen oder sie ersetzen.</p>
 </div></div>
 <div class="toast" id="toast"></div>
@@ -195,6 +195,19 @@ const addDays=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.getFullYe
 const nextMonday=()=>addDays((8-new Date().getDay())%7||7);
 const isDue=l=>l.ampel!=='gruen'&&open(l)&&(l.ampel==='rot'||(l.faellig&&l.faellig<=today()));
 const addr=l=>[l.strasse,[l.plz,l.ort].filter(Boolean).join(' ')].filter(Boolean).join(', ')||l.adresse||'';
+function parseAddr(t){
+  t=String(t||'').trim();let plz='';
+  const m=t.match(/\b(\d{5})\b/);if(m){plz=m[1];t=t.replace(m[0],' ')}
+  const TYPE=/^(EFH|MFH|DHH|RMH|WNG|ETW|Neubau|Wohnung|Haus|Reihenhaus|Reihenendhaus|Gewerbe|Grundstück|Erbpacht|\d(?:[,.]\d)?[- ]?(?:Z|Zi)\.?[- ]?(?:Wohnung|WNG|ETW)?)\b[\s.,-]*/i;
+  const parts=t.split(/[,;]/).map(x=>x.replace(/\s+/g,' ').trim().replace(TYPE,'').trim()).filter(Boolean);
+  const isStreet=x=>/(str\.?|straße|strasse|weg|gasse|platz|ring|allee|damm|ufer|steig|pfad|hof|gässle|halde|berg|tal)\b/i.test(x)||/\d+\s?[a-z]?(\/\d+)?$/i.test(x);
+  let strasse='';const rest=[];
+  for(const p of parts){if(!strasse&&isStreet(p))strasse=p;else rest.push(p)}
+  let ort=rest.join(' ').trim();
+  const sp=strasse.match(/^(.+?\d+\s?[a-z]?(?:\/\d+)?)\s+([A-ZÄÖÜ][^\d]*)$/);
+  if(sp&&!ort){strasse=sp[1];ort=sp[2].trim()}
+  return {strasse,plz,ort};
+}
 const title=l=>l.name||addr(l)||'(ohne Name)';
 const telHref=t=>{const d=String(t||'').replace(/[^\d+]/g,'');return d.replace(/\D/g,'').length>=6?'tel:'+d:''};
 
@@ -278,7 +291,7 @@ function openDetail(id){
   <label>Name</label><input class="f" id="f_name" value="${v('name')}">
   <label>Telefon</label><input class="f" id="f_tel" inputmode="tel" value="${v('tel')}">
   <label>Straße und Hausnummer</label><input class="f" id="f_strasse" autocomplete="street-address" value="${v('strasse')}">
-  ${cur.adresse?`<div class="hint">Bisher eingetragen: ${esc(cur.adresse)}</div>`:''}
+  ${cur.adresse?`<div class="hint">Bisher eingetragen: ${esc(cur.adresse)}</div><button type="button" class="btn" id="takeAddr" style="margin-top:6px">⤵ Übernehmen</button>`:''}
   <div class="addr"><div><label>PLZ</label><input class="f" id="f_plz" inputmode="numeric" maxlength="5" value="${v('plz')}"></div>
   <div><label>Ort</label><input class="f" id="f_ort" value="${v('ort')}"></div></div>
   <button type="button" class="btn" id="mapBtn" style="margin-top:10px;width:100%">📍 In Maps öffnen</button>
@@ -303,6 +316,11 @@ function openDetail(id){
   $('#dBack').onclick=closeDetail;
   $('#dSave').onclick=()=>{collect();commit();closeDetail();toast('Gespeichert')};
   if(!isNew)$('#dDel').onclick=()=>{if(confirm('„'+title(cur)+'“ wirklich löschen?')){leads=leads.filter(l=>l.id!==cur.id);save();closeDetail();render();toast('Gelöscht')}};
+  if($('#takeAddr'))$('#takeAddr').onclick=()=>{
+    const r=parseAddr(cur.adresse);
+    $('#f_strasse').value=r.strasse||cur.adresse;$('#f_plz').value=r.plz;$('#f_ort').value=r.ort;
+    toast('Übernommen – bitte kurz prüfen, dann Speichern');
+  };
   $('#mapBtn').onclick=()=>{
     const g=i=>$(i).value.trim();
     const a=[g('#f_strasse'),[g('#f_plz'),g('#f_ort')].filter(Boolean).join(' ')].filter(Boolean).join(', ')||cur.adresse||'';

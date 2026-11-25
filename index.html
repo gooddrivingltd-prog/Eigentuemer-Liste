@@ -133,7 +133,9 @@ h2{font:400 22px var(--serif);margin:6px 0 0}
 
 <script>
 const KEY='eigentuemerliste.v1';
-const STATUS=['Ausstehend','MPE','Auftrag','Verkauft','Erledigt'];
+const STATUS=['Ausstehend','Auftrag','Verkauft','Erledigt'];
+const MPE=['Zu erledigen','Erledigt','Nicht notwendig'];
+function migrate(l){if(l.status==='MPE'){l.status='Ausstehend';if(!l.mpe)l.mpe='Zu erledigen'}if(l.mpe===undefined)l.mpe='';return l}
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>crypto.randomUUID?crypto.randomUUID():'id'+Date.now()+Math.random().toString(16).slice(2);
@@ -142,7 +144,8 @@ const fmt=iso=>iso?iso.split('-').reverse().join('.'):'';
 const short=iso=>iso?iso.slice(8,10)+'.'+iso.slice(5,7)+'.':'';
 
 let leads=[]; const ui={q:'',status:'Alle',quelle:'',sort:'faellig'};
-function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'[]');leads=Array.isArray(d)?d:[]}catch(e){leads=[]}}
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'[]');leads=Array.isArray(d)?d:[]}catch(e){leads=[]}
+  if(leads.some(l=>l.status==='MPE'||l.mpe===undefined)){leads.forEach(migrate);save()}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(leads))}catch(e){toast('Speichern nicht möglich')}}
 function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2600)}
 const open=l=>!['Verkauft','Erledigt'].includes(l.status);
@@ -192,7 +195,7 @@ function render(){
         ${l.name&&l.objekt?`<div class="obj">${esc(l.objekt)}</div>`:''}</div>
         ${h?`<a class="call" href="${h}" aria-label="Anrufen" data-call>☎</a>`:''}</div>
       ${l.info?`<div class="info">${esc(l.info)}</div>`:''}
-      <div class="meta">${l.ampel?`<span class="tag am-${l.ampel}">${AMP[l.ampel].e} ${AMP[l.ampel].t}</span>`:''}<span class="tag st-${esc(l.status)}">${esc(l.status)}</span>
+      <div class="meta">${l.ampel?`<span class="tag am-${l.ampel}">${AMP[l.ampel].e} ${AMP[l.ampel].t}</span>`:''}<span class="tag st-${esc(l.status)}">${esc(l.status)}</span>${l.mpe?`<span class="tag st-${l.mpe==='Erledigt'?'Auftrag':l.mpe==='Zu erledigen'?'MPE':'Erledigt'}">MPE: ${esc(l.mpe)}</span>`:''}
         ${l.quelle?`<span class="tag">${esc(l.quelle)}</span>`:''}
         ${l.faellig&&isDue(l)?`<span class="tag due">fällig ${short(l.faellig)}</span>`:l.faellig&&open(l)?`<span class="tag">Nachfassen ${short(l.faellig)}</span>`:''}
         ${l.letzter?`<span class="tag">Kontakt ${short(l.letzter)}</span>`:''}</div></div>`}).join('');
@@ -202,8 +205,8 @@ function render(){
 let cur=null;
 function openDetail(id){
   const isNew=!id;
-  cur=isNew?{id:uid(),nr:'',name:'',tel:'',objekt:'',quelle:'',ewe:false,fio:false,tippgeber:'',datum:today(),status:'Ausstehend',nachgefasst:'Nein',info:'',letzter:'',faellig:'',ampel:'',updated:0}
-           :{ampel:'',...leads.find(l=>l.id===id)};
+  cur=isNew?{id:uid(),nr:'',name:'',tel:'',objekt:'',quelle:'',ewe:false,fio:false,tippgeber:'',datum:today(),status:'Ausstehend',nachgefasst:'Nein',info:'',letzter:'',faellig:'',ampel:'',mpe:'',updated:0}
+           :{ampel:'',mpe:'',...leads.find(l=>l.id===id)};
   const v=k=>esc(cur[k]);
   const h=telHref(cur.tel);
   $('#detailIn').innerHTML=`
@@ -218,6 +221,8 @@ function openDetail(id){
   <label>Aktuelle Info</label><textarea class="f" id="f_info">${v('info')}</textarea>
   <div class="two"><div><label>Status</label><select class="f" id="f_status">${STATUS.map(s=>`<option ${s===cur.status?'selected':''}>${s}</option>`).join('')}</select></div>
   <div><label>Nachfassen am</label><input class="f" type="date" id="f_faellig" value="${v('faellig')}"></div></div>
+  <label>MPE (Marktpreiseinschätzung)</label>
+  <select class="f" id="f_mpe"><option value="">–</option>${MPE.map(s=>`<option ${s===cur.mpe?'selected':''}>${s}</option>`).join('')}</select>
   <label>Name</label><input class="f" id="f_name" value="${v('name')}">
   <label>Telefon</label><input class="f" id="f_tel" inputmode="tel" value="${v('tel')}">
   <label>Adresse / Objekt</label><input class="f" id="f_objekt" value="${v('objekt')}">
@@ -251,7 +256,7 @@ function openDetail(id){
 }
 function collect(){
   const g=i=>$(i).value.trim();
-  Object.assign(cur,{info:$('#f_info').value.trim(),status:g('#f_status'),faellig:g('#f_faellig'),name:g('#f_name'),tel:g('#f_tel'),objekt:g('#f_objekt'),
+  Object.assign(cur,{mpe:$('#f_mpe').value,info:$('#f_info').value.trim(),status:g('#f_status'),faellig:g('#f_faellig'),name:g('#f_name'),tel:g('#f_tel'),objekt:g('#f_objekt'),
     quelle:g('#f_quelle'),tippgeber:g('#f_tipp'),nr:g('#f_nr'),nachgefasst:g('#f_nach'),datum:g('#f_datum'),letzter:g('#f_letzter'),
     ewe:$('#f_ewe').checked,fio:$('#f_fio').checked});
   if(cur.ampel==='gelb'&&!cur.faellig)cur.faellig=addDays(7);
@@ -284,7 +289,7 @@ function download(name,text,type){
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),3000)}
 $('#exJson').onclick=()=>{download(`eigentuemerliste-${today()}.json`,JSON.stringify({app:'eigentuemerliste',version:1,leads},null,1),'application/json');toast('Sicherung gespeichert')};
 $('#exCsv').onclick=()=>{
-  const cols=[['nr','Nr.'],['name','Name'],['tel','Telefon'],['objekt','Adresse / Objekt'],['quelle','Quelle'],['ewe','EWE'],['fio','FIO erfasst'],['tippgeber','Tippgeber'],['datum','Datum'],['status','Status'],['nachgefasst','Nachgefasst'],['info','Aktuelle Info'],['letzter','Letzter Kontakt'],['faellig','Nachfassen am'],['ampel','Ampel']];
+  const cols=[['nr','Nr.'],['name','Name'],['tel','Telefon'],['objekt','Adresse / Objekt'],['quelle','Quelle'],['ewe','EWE'],['fio','FIO erfasst'],['tippgeber','Tippgeber'],['datum','Datum'],['status','Status'],['mpe','MPE'],['nachgefasst','Nachgefasst'],['info','Aktuelle Info'],['letzter','Letzter Kontakt'],['faellig','Nachfassen am'],['ampel','Ampel']];
   const cell=v=>'"'+String(typeof v==='boolean'?(v?'Ja':'Nein'):v??'').replace(/"/g,'""')+'"';
   const csv='﻿'+[cols.map(c=>cell(c[1])).join(';'),...leads.map(l=>cols.map(c=>cell(c[0]==='ampel'?(AMP[l.ampel]?.n||''):l[c[0]])).join(';'))].join('\r\n');
   download(`eigentuemerliste-${today()}.csv`,csv,'text/csv');toast('CSV gespeichert')};
@@ -294,7 +299,7 @@ $('#file').addEventListener('change',async e=>{
   try{
     const d=JSON.parse(await f.text());const arr=Array.isArray(d)?d:d.leads;
     if(!Array.isArray(arr))throw 0;
-    const inc=arr.filter(x=>x&&typeof x==='object').map(x=>({id:x.id||uid(),nr:'',name:'',tel:'',objekt:'',quelle:'',ewe:false,fio:false,tippgeber:'',datum:'',status:'Ausstehend',nachgefasst:'Nein',info:'',letzter:'',faellig:'',ampel:'',updated:0,...x}));
+    const inc=arr.filter(x=>x&&typeof x==='object').map(x=>({id:x.id||uid(),nr:'',name:'',tel:'',objekt:'',quelle:'',ewe:false,fio:false,tippgeber:'',datum:'',status:'Ausstehend',nachgefasst:'Nein',info:'',letzter:'',faellig:'',ampel:'',mpe:'',updated:0,...x})).map(migrate);
     let replace=true;
     if(leads.length){replace=confirm(`${inc.length} Einträge in der Datei.\n\nOK = bestehende Liste (${leads.length}) ERSETZEN\nAbbrechen = zusammenführen`)}
     if(replace){leads=inc}else{

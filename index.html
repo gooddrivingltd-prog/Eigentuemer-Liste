@@ -166,7 +166,7 @@ h2,h3,.sec{font-family:var(--sans)}
     <button class="btn" id="exCsv">Als CSV (Excel)</button>
   </div>
   <input type="file" id="file" accept=".json,application/json" hidden>
-  <p id="ver" style="margin-top:22px">Version 26.11.2026, 00:40</p>
+  <p id="ver" style="margin-top:22px">Version 26.11.2026, 01:00</p>
   <p>Beim Laden einer Sicherung kannst du wählen: mit der bestehenden Liste zusammenführen oder sie ersetzen.</p>
 </div></div>
 <div class="sheet" id="paste"><div class="sheet-in menu">
@@ -453,6 +453,16 @@ function mapObjekt(t){t=String(t||'').toLowerCase();if(!t)return'';
   if(/wohnung|etw|apartment/.test(t))return'Wohnung';
   if(/gewerbe|büro|laden|praxis/.test(t))return'Gewerbe';
   return'Sonstiges'}
+function mailDate(txt){
+  const MO={januar:1,februar:2,märz:3,maerz:3,april:4,mai:5,juni:6,juli:7,august:8,september:9,oktober:10,november:11,dezember:12};
+  const iso=(y,m,d)=>{y=+y;if(y<100)y+=2000;m=+m;d=+d;if(y<2000||y>2100||m<1||m>12||d<1||d>31)return'';return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0')};
+  for(const ln of String(txt).split('\n')){
+    if(!/^\s*(gesendet|datum|date|sent|eingegangen|empfangen|received)\b/i.test(ln))continue;
+    let m=ln.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);if(m){const r=iso(m[3],m[2],m[1]);if(r)return r}
+    m=ln.match(/(\d{1,2})\.?\s*([A-Za-zäÄ]+)\.?\s+(\d{4})/);if(m&&MO[m[2].toLowerCase()]){const r=iso(m[3],MO[m[2].toLowerCase()],m[1]);if(r)return r}
+    m=ln.match(/(\d{4})-(\d{2})-(\d{2})/);if(m){const r=iso(m[1],m[2],m[3]);if(r)return r}
+  }
+  return''}
 function parseMail(txt){
   const lines=String(txt).replace(/\r/g,'').replace(/\[([^\]]*)\]\((?:https?:|mailto:|tel:)[^)]*\)/g,'$1').split('\n').map(l=>l.replace(/\u00a0/g,' ').trim()).filter(Boolean);
   const low=lines.map(l=>l.toLowerCase().replace(/:$/,''));
@@ -492,18 +502,19 @@ function mailMerge(ex,p){
   if(p.strasse&&(p.plz||p.ort))m.adresse='';
   else if(p.adresse)m.adresse=p.adresse;
   if(!ex.tippgeber&&p.tippgeber)m.tippgeber=p.tippgeber;
+  if(!ex.datum&&p.datum)m.datum=p.datum;
   if(p.info&&!(ex.info||'').includes(p.info))m.info=(ex.info?ex.info+'\n\n':'')+'Mail '+short(today())+':\n'+p.info;
   return m}
 $('#pasteGo').onclick=()=>{
-  const p=parseMail($('#pasteText').value);
+  const p=parseMail($('#pasteText').value);p.datum=mailDate($('#pasteText').value)||'';
   if(!p.name&&!p.tel&&!p.strasse&&!p.adresse){toast('Nichts erkannt – ist das die Lead-Mail?');return}
   const dup=findDup(p);
   const finish=(fn)=>{$('#dup').hidden=true;$('#paste').classList.remove('open');fn()};
-  if(!dup){finish(()=>{openDetail(null,{...p,datum:today()});toast('Aus Mail erkannt – bitte prüfen, dann Speichern')});return}
+  if(!dup){finish(()=>{openDetail(null,{...p,datum:p.datum||today()});toast('Aus Mail erkannt – bitte prüfen, dann Speichern')});return}
   $('#dupText').textContent='„'+title(dup)+'“ ist schon in der Liste. Was soll mit den Daten aus der Mail passieren?';
   $('#dup').hidden=false;
   $('#dupUpd').onclick=()=>finish(()=>{openDetail(dup.id,mailMerge(dup,p));toast('Mail-Daten eingetragen – bitte prüfen, dann Speichern')});
-  $('#dupNew').onclick=()=>finish(()=>{openDetail(null,{...p,datum:today()});toast('Aus Mail erkannt – bitte prüfen, dann Speichern')});
+  $('#dupNew').onclick=()=>finish(()=>{openDetail(null,{...p,datum:p.datum||today()});toast('Aus Mail erkannt – bitte prüfen, dann Speichern')});
   $('#dupOpen').onclick=()=>finish(()=>openDetail(dup.id));
 };
 

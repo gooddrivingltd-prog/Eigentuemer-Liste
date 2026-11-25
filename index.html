@@ -63,6 +63,7 @@ main{padding:14px 16px 110px;max-width:760px;margin:0 auto}
 .amp-b.rot i{background:var(--red)}.amp-b.gelb i{background:var(--yellow)}.amp-b.gruen i{background:var(--green)}
 .amp-b.rot.on{border-color:var(--red)}.amp-b.gelb.on{border-color:var(--yellow)}.amp-b.gruen.on{border-color:var(--green)}
 .amp-b.on{background:var(--surface2)}
+.sec{font:400 18px var(--serif);color:var(--accent);margin:30px 0 -2px;padding-top:16px;border-top:1px solid var(--line)}
 .hint{color:var(--muted);font-size:13px;margin-top:6px;min-height:18px}
 .banner{display:flex;justify-content:space-between;align-items:center;width:100%;background:var(--surface2);border:1px solid var(--line);border-left:6px solid var(--accent);border-radius:14px;padding:12px 14px;margin-bottom:12px;cursor:pointer;text-align:left}
 .banner[hidden]{display:none}
@@ -242,6 +243,11 @@ function openDetail(id){
   <label>Ampel</label>
   <div class="amps" id="amps">${['rot','gelb','gruen'].map(a=>`<button type="button" class="amp-b ${a} ${cur.ampel===a?'on':''}" data-a="${a}"><i></i>${AMP[a].n}<small>${AMP[a].t}</small></button>`).join('')}</div>
   <div class="hint" id="ampHint"></div>
+  <h3 class="sec">Kontakt</h3>
+  <label>Name</label><input class="f" id="f_name" value="${v('name')}">
+  <label>Telefon</label><input class="f" id="f_tel" inputmode="tel" value="${v('tel')}">
+  <label>Adresse / Objekt</label><input class="f" id="f_objekt" value="${v('objekt')}">
+  <h3 class="sec">Nachfassen</h3>
   <label>Notiz mit Datum anhängen (setzt „Letzter Kontakt“ auf heute)</label>
   <div class="quick"><input class="f" id="quick" placeholder="z. B. nicht erreicht, Mailbox"><button class="btn" id="quickBtn">Hinzufügen</button></div>
   <label>Aktuelle Info</label><textarea class="f" id="f_info">${v('info')}</textarea>
@@ -250,14 +256,12 @@ function openDetail(id){
   <button type="button" class="btn" id="calBtn" style="margin-top:10px;width:100%">📅 In Kalender eintragen</button>
   <div class="two"><div><label>Datum (Eingang)</label><input class="f" type="date" id="f_datum" value="${v('datum')}"></div>
   <div><label>Letzter Kontakt</label><input class="f" type="date" id="f_letzter" value="${v('letzter')}"></div></div>
+  <label>Nachgefasst</label><select class="f" id="f_nach">${['Nein','Ja'].map(s=>`<option ${s===cur.nachgefasst?'selected':''}>${s}</option>`).join('')}</select>
   <label>MPE (Marktpreiseinschätzung)</label>
   <select class="f" id="f_mpe"><option value="">–</option>${MPE.map(s=>`<option ${s===cur.mpe?'selected':''}>${s}</option>`).join('')}</select>
-  <label>Name</label><input class="f" id="f_name" value="${v('name')}">
-  <label>Telefon</label><input class="f" id="f_tel" inputmode="tel" value="${v('tel')}">
-  <label>Adresse / Objekt</label><input class="f" id="f_objekt" value="${v('objekt')}">
-  <label>Tippgeber</label><input class="f" id="f_tipp" list="dlTipp" value="${v('tippgeber')}">
-  <div class="two"><div><label>Nr.</label><input class="f" id="f_nr" value="${v('nr')}"></div>
-  <div><label>Nachgefasst</label><select class="f" id="f_nach">${['Nein','Ja'].map(s=>`<option ${s===cur.nachgefasst?'selected':''}>${s}</option>`).join('')}</select></div></div>
+  <h3 class="sec">Herkunft</h3>
+  <div class="two"><div><label>Tippgeber</label><input class="f" id="f_tipp" list="dlTipp" value="${v('tippgeber')}"></div>
+  <div><label>Nr.</label><input class="f" id="f_nr" value="${v('nr')}"></div></div>
   <div class="two" style="margin-top:14px"><label class="toggle" style="margin:0"><input type="checkbox" id="f_ewe" ${cur.ewe?'checked':''}>EWE</label>
   <label class="toggle" style="margin:0"><input type="checkbox" id="f_fio" ${cur.fio?'checked':''}>In FIO erfasst</label></div>
   <div class="savebar"><button class="btn primary" id="dSave">Speichern</button></div>`;
